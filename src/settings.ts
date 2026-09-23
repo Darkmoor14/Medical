@@ -8,6 +8,8 @@ export interface Settings extends EngineSettings {
   piiThreshold: number;
   apiKey: string;
   translationModel: string;
+  // Extra "romanian = english" glossary lines, applied before translation.
+  userGlossary: string;
 }
 
 // Multilingual NLLB model converted for Transformers.js; covers Romanian → English.
@@ -22,6 +24,7 @@ export const DEFAULT_SETTINGS: Settings = {
   piiThreshold: 0.3,
   apiKey: "",
   translationModel: DEFAULT_TRANSLATION_MODEL,
+  userGlossary: "",
   device: "wasm",
   source: "hub",
   localPath: "/models/",

@@ -178,6 +178,23 @@ export function settingsDialog(
             { className: "muted small" },
             "Romanian notes are de-identified, translated on this device, and then analysed by the English clinical models. The default model is a one-time download of several hundred MB.",
           ),
+          h(
+            "label",
+            { className: "text" },
+            "Your medical glossary (one per line: romanian = english) ",
+            h("textarea", {
+              rows: 4,
+              spellcheck: false,
+              placeholder: "nepalpabil = non-palpable\nsuflu sistolic = systolic murmur",
+              value: s.userGlossary,
+              oninput: (e: Event) => (s.userGlossary = (e.target as HTMLTextAreaElement).value),
+            }),
+          ),
+          h(
+            "p",
+            { className: "muted small" },
+            "Terms are replaced with the English before translation, and your entries take priority over the built-in list of about 100 clinical terms and abbreviations.",
+          ),
         ),
         h(
           "fieldset",

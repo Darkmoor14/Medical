@@ -19,6 +19,7 @@ import { normalizeLabel } from "openmed";
 import { findRomanianPii, mergePii } from "../ro-pii";
 import { ACCEPTED_FILES, extractText } from "../files";
 import { draftCard } from "./draft-card";
+import { applyGlossary, parseUserGlossary } from "../glossary";
 import { detectLanguage, prepareForTranslation, segmentSentences, type NoteLanguage } from "../lang";
 
 const SAMPLE_NOTE = `DISCHARGE SUMMARY (synthetic example)
@@ -54,7 +55,7 @@ interface NoteState {
   language: NoteLanguage;
   // For non-English notes: the on-device English translation that the
   // clinical models were run on.
-  english: { text: string; entities: Entity[] } | null;
+  english: { text: string; entities: Entity[]; glossaryHits: number } | null;
 }
 
 export function noteTab(engine: Engine, getSettings: () => Settings): HTMLElement {
@@ -149,9 +150,20 @@ export function noteTab(engine: Engine, getSettings: () => Settings): HTMLElemen
         // Only the de-identified text is translated, so identifiers never
         // reach the translation or the clinical models.
         const segments = segmentSentences(redact(text, pii));
+        // Known clinical terms are put into English before translation, then
+        // shouting (ALL-CAPS) segments are sentence-cased.
+        const userGlossary = parseUserGlossary(s.userGlossary);
+        let glossaryHits = 0;
+        const toTranslate = segments
+          .filter((g) => g.translate)
+          .map((g) => {
+            const { text: t, replaced } = applyGlossary(g.text, userGlossary);
+            glossaryHits += replaced;
+            return prepareForTranslation(t);
+          });
         const translated = await engine.translate(
           {
-            segments: segments.filter((g) => g.translate).map((g) => prepareForTranslation(g.text)),
+            segments: toTranslate,
             model: s.translationModel,
             srcLang: "ron_Latn",
             tgtLang: "eng_Latn",
@@ -165,7 +177,7 @@ export function noteTab(engine: Engine, getSettings: () => Settings): HTMLElemen
           onProgress,
         );
         const found = toEntities(englishText, doc?.spans ?? []).filter((e) => !/[[\]]/.test(e.text));
-        english = { text: englishText, entities: found };
+        english = { text: englishText, entities: found, glossaryHits };
         entities = found;
       }
       const groups = groupTerms(entities);
@@ -287,6 +299,8 @@ export function noteTab(engine: Engine, getSettings: () => Settings): HTMLElemen
             "p",
             { className: "muted small" },
             "Machine-translated on this device from the de-identified note, and used only to find clinical terms. Check it before relying on it.",
+            st.english.glossaryHits > 0 &&
+              ` ${st.english.glossaryHits} clinical term${st.english.glossaryHits === 1 ? "" : "s"} were translated with the medical glossary first (add your own in Settings).`,
           ),
           h("pre", { className: "note-view" }, ...highlight(st.english.text, st.english.entities)),
         ),

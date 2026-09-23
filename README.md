@@ -81,6 +81,8 @@ Notes in Romanian are detected automatically (or pick **Română** next to *Anal
    The rules are in `src/ro-pii.ts`. The CNP validator is ported from OpenMed's Python Romanian pack.
 2. **Clinical terms.** OpenMed's clinical models are English-only. The *de-identified* note is therefore translated to English on your device (default model `Xenova/nllb-200-distilled-600M`, a one-time download of several hundred MB, changeable in Settings). The English models then run on the translation. The translation is shown so you can check it, and the English terms feed the PubMed search.
 
+Before translation, a built-in **Romanian → English clinical glossary** (`src/glossary.ts`) replaces about 100 exam phrases, diagnoses and abbreviations with their English equivalents: "splina nepalpabilă" → "spleen non-palpable", "sub rebordul costal drept" → "below the right costal margin", HTA, DZ, TA, AV, HLG, EDS/EDI and others. General-purpose translation models often get these wrong. Add your own terms in **Settings → Romanian notes** (one `romanian = english` per line); they take priority over the built-in list.
+
 For offline use add `--translation` to `npm run download-models`.
 
 ## Settings
