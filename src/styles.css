@@ -203,6 +203,7 @@ select {
 }
 select { width: auto; }
 textarea { resize: vertical; }
+textarea.dragging { outline: 2px dashed var(--accent); outline-offset: 2px; background: var(--accent-soft); }
 textarea.query { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85rem; }
 
 .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }

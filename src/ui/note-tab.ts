@@ -17,6 +17,7 @@ import { fetchArticles, pubmedSearchUrl, searchPubMed } from "../pubmed";
 import { nerModels, type Settings } from "../settings";
 import { normalizeLabel } from "openmed";
 import { findRomanianPii, mergePii } from "../ro-pii";
+import { ACCEPTED_FILES, extractText } from "../files";
 import { detectLanguage, segmentSentences, type NoteLanguage } from "../lang";
 
 const SAMPLE_NOTE = `DISCHARGE SUMMARY (synthetic example)
@@ -61,11 +62,42 @@ export function noteTab(engine: Engine, getSettings: () => Settings): HTMLElemen
     id: "note-input",
     rows: 12,
     spellcheck: false,
-    placeholder: "Paste a clinical note. It is analysed on this device and is never uploaded.",
+    placeholder: "Paste a clinical note, or drop a .docx / .pdf / .txt file here. It is analysed on this device and is never uploaded.",
     "aria-label": "Clinical note",
   });
   const status = h("p", { className: "status", role: "status" });
   const analyzeBtn = h("button", { className: "primary", type: "button" }, "Analyze note");
+  const fileInput = h("input", { type: "file", accept: ACCEPTED_FILES, hidden: true, "aria-label": "Open document" });
+  const openBtn = h("button", { type: "button", onclick: () => fileInput.click() }, "Open file (.docx, .pdf, .txt)");
+  async function loadFile(file: File) {
+    status.textContent = `Reading ${file.name}…`;
+    try {
+      const { text, warning } = await extractText(file);
+      input.value = text;
+      langSelect.value = "auto";
+      replace(results);
+      state = null;
+      status.textContent = `Loaded ${file.name} (${text.length.toLocaleString()} characters), read on this device.${warning ? " " + warning : ""} Check the text, then click Analyze note.`;
+    } catch (err) {
+      showError(status, err);
+    }
+  }
+  fileInput.addEventListener("change", () => {
+    const file = fileInput.files?.[0];
+    if (file) void loadFile(file);
+    fileInput.value = "";
+  });
+  input.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    input.classList.add("dragging");
+  });
+  input.addEventListener("dragleave", () => input.classList.remove("dragging"));
+  input.addEventListener("drop", (e) => {
+    e.preventDefault();
+    input.classList.remove("dragging");
+    const file = e.dataTransfer?.files?.[0];
+    if (file) void loadFile(file);
+  });
   const langSelect = h(
     "select",
     { "aria-label": "Note language" },
@@ -382,7 +414,7 @@ export function noteTab(engine: Engine, getSettings: () => Settings): HTMLElemen
         ),
       ),
       input,
-      h("div", { className: "actions" }, analyzeBtn, langSelect),
+      h("div", { className: "actions" }, analyzeBtn, langSelect, openBtn, fileInput),
       status,
     ),
     results,

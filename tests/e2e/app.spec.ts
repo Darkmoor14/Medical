@@ -125,6 +125,32 @@ test("Romanian note: rule-based identifiers, on-device translation, English term
   await page.screenshot({ path: "test-results/romanian.png", fullPage: true });
 });
 
+for (const file of ["scrisoare.docx", "scrisoare.pdf"]) {
+  test(`reads ${file} in the browser and de-identifies it`, async ({ page }) => {
+    await page.goto("/");
+    await page.getByLabel("Open document").setInputFiles(`tests/fixtures/docs/${file}`);
+    const note = page.getByLabel("Clinical note");
+    await expect(note).toHaveValue(/Fibrilație atrială/);
+    await expect(note).toHaveValue(/Pacient: Popescu Ion, CNP 1610412400010/);
+    await expect(page.getByText(new RegExp(`Loaded ${file.replace(".", "\\.")}`))).toBeVisible();
+
+    await page.getByRole("button", { name: "Analyze note" }).click();
+    const view = page.locator(".note-view").first();
+    await expect(view).toContainText("[CNP]");
+    await expect(view).not.toContainText("Popescu");
+  });
+}
+
+test("rejects old .doc files with a clear message", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel("Open document").setInputFiles({
+    name: "vechi.doc",
+    mimeType: "application/msword",
+    buffer: Buffer.from("x"),
+  });
+  await expect(page.getByText(/Old \.doc files are not supported/)).toBeVisible();
+});
+
 test("literature miner tallies terms and filters papers", async ({ page }) => {
   await mockPubMed(page);
   await page.goto("/");

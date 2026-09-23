@@ -4,6 +4,8 @@ A browser app that combines [OpenMed](https://github.com/maziyarpanahi/openmed) 
 
 **Note → Evidence**: paste a clinical note. OpenMed removes identifiers and pulls out diseases, drugs and other terms. You pick the terms, check the generated PubMed query, and get matching papers.
 
+**Documents**: instead of pasting, click *Open file* or drag a **.docx**, **.pdf** or **.txt** onto the note box. The file is read inside the browser (mammoth for Word, pdf.js for PDF) and is never uploaded. Scanned PDFs with no text layer can't be read yet, and old `.doc` files need to be saved as `.docx` first.
+
 **Literature miner**: search PubMed, download up to 200 abstracts, and run OpenMed over them to see which conditions, drugs and genes they mention most. Click a term to filter the papers, or export a CSV.
 
 ## Use it online
