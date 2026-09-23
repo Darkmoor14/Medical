@@ -62,6 +62,13 @@ export class Engine {
     return this.call<NoteAnalysis>({ type: "analyzeNote", ...args }, onProgress);
   }
 
+  translate(
+    args: { segments: string[]; model: string; srcLang: string; tgtLang: string },
+    onProgress?: (p: ProgressEvent) => void,
+  ) {
+    return this.call<string[]>({ type: "translate", ...args }, onProgress);
+  }
+
   extractMany(
     args: { docs: { id: string; text: string }[]; nerModels: string[]; threshold: number },
     onProgress?: (p: ProgressEvent) => void,

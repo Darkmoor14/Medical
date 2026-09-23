@@ -7,7 +7,11 @@ export interface Settings extends EngineSettings {
   threshold: number;
   piiThreshold: number;
   apiKey: string;
+  translationModel: string;
 }
+
+// Multilingual NLLB model converted for Transformers.js; covers Romanian → English.
+export const DEFAULT_TRANSLATION_MODEL = "Xenova/nllb-200-distilled-600M";
 
 const KEY = "openmed-pubmed-settings-v1";
 
@@ -17,6 +21,7 @@ export const DEFAULT_SETTINGS: Settings = {
   threshold: 0.5,
   piiThreshold: 0.3,
   apiKey: "",
+  translationModel: DEFAULT_TRANSLATION_MODEL,
   device: "wasm",
   source: "hub",
   localPath: "/models/",

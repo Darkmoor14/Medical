@@ -45,6 +45,24 @@ Then open **Settings → Where models load from → Local folder** (`/models/`).
 npm run build        # outputs dist/, which can be served from any static host or opened via `npm run preview`
 ```
 
+## Romanian notes
+
+Notes in Romanian are detected automatically (or pick **Română** next to *Analyze note*).
+
+1. **Identifiers.** Romanian-specific rules run alongside the OpenMed PII model on every note:
+   - CNP, with the official checksum; any other 13-digit number is still redacted;
+   - ID card serie/număr and 20-digit health card numbers;
+   - FO / registration numbers, +40 and 07xx phone numbers, and RO IBANs;
+   - dates such as 12.04.1961 and 3 martie 2024;
+   - street addresses (Str./Bd./Calea… nr., bl., ap.), sector, jud., and county seats;
+   - named hospitals and clinics;
+   - names after titles or labels (Dr., Pacient:, Nume:, medic curant…).
+
+   The rules are in `src/ro-pii.ts`. The CNP validator is ported from OpenMed's Python Romanian pack.
+2. **Clinical terms.** OpenMed's clinical models are English-only. The *de-identified* note is therefore translated to English on your device (default model `Xenova/nllb-200-distilled-600M`, a one-time download of several hundred MB, changeable in Settings). The English models then run on the translation. The translation is shown so you can check it, and the English terms feed the PubMed search.
+
+For offline use add `--translation` to `npm run download-models`.
+
 ## Settings
 
 | Setting | Notes |

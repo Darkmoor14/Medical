@@ -23,6 +23,19 @@ async function installFakeEngine(page: Page) {
       configure: async () => null,
       preload: async () => null,
       analyzeNote: async ({ text }: { text: string }) => ({ pii: find(text, "pii"), clinical: find(text, "ner") }),
+      // Phrase-table "translation" standing in for the NLLB model.
+      translate: async ({ segments }: { segments: string[] }) => {
+        const table: [RegExp, string][] = [
+          [/Diabet zaharat tip 2/gi, "Type 2 diabetes mellitus"],
+          [/Boală cronică de rinichi/gi, "Chronic kidney disease"],
+          [/Fibrilație atrială/gi, "Atrial fibrillation"],
+          [/Pneumonie comunitară/gi, "Community-acquired pneumonia"],
+          [/ceftriaxonă/gi, "ceftriaxone"],
+          [/azitromicină/gi, "azithromycin"],
+          [/Metforminul/gi, "Metformin"],
+        ];
+        return segments.map((seg) => table.reduce((t, [re, en]) => t.replace(re, en), seg));
+      },
       extractMany: async ({ docs }: { docs: { id: string; text: string }[] }) =>
         docs.map((d) => ({ id: d.id, spans: find(d.text, "ner") })),
     };
@@ -83,6 +96,33 @@ test("note → de-identify → PubMed evidence, without leaking identifiers", as
     for (const phi of ["Jordan", "Avery", "00482913", "Riverside"]) expect(body).not.toContain(phi);
   }
   await page.screenshot({ path: "test-results/note-tab.png", fullPage: true });
+});
+
+test("Romanian note: rule-based identifiers, on-device translation, English terms", async ({ page }) => {
+  const requests = await mockPubMed(page);
+  await page.goto("/");
+  await page.getByRole("button", { name: "Exemplu sintetic (RO)" }).click();
+  await page.getByRole("button", { name: "Analyze note" }).click();
+
+  await expect(page.getByText(/Romanian note\. Found/)).toBeVisible();
+  const view = page.locator(".note-view").first();
+  for (const phi of ["Popescu", "1610412400010", "RX nr. 123456", "Eminescu", "0722 123 456", "4821/2024", "Ionescu", "18.03.2024", "București"]) {
+    await expect(view).not.toContainText(phi);
+  }
+  await expect(view).toContainText("[CNP]");
+
+  const translation = page.locator("section", { hasText: "English translation" });
+  await expect(translation).toContainText("Type 2 diabetes mellitus");
+  await expect(translation).not.toContainText("Popescu");
+
+  const query = page.getByLabel("PubMed query");
+  await expect(query).toHaveValue(/"Atrial fibrillation"\[tiab\]/);
+  await page.getByRole("button", { name: "Search PubMed" }).click();
+  await expect(page.locator(".paper")).toHaveCount(2);
+  for (const body of requests) {
+    for (const phi of ["Popescu", "Ionescu", "1610412400010", "Eminescu"]) expect(body).not.toContain(phi);
+  }
+  await page.screenshot({ path: "test-results/romanian.png", fullPage: true });
 });
 
 test("literature miner tallies terms and filters papers", async ({ page }) => {

@@ -20,6 +20,14 @@ export type WorkerRequest =
     }
   | {
       id: number;
+      type: "translate";
+      segments: string[];
+      model: string;
+      srcLang: string;
+      tgtLang: string;
+    }
+  | {
+      id: number;
       type: "extractMany";
       docs: { id: string; text: string }[];
       nerModels: string[];
@@ -27,7 +35,7 @@ export type WorkerRequest =
     };
 
 export interface ProgressEvent {
-  stage: "download" | "analyze";
+  stage: "download" | "analyze" | "translate";
   model: string;
   file: string;
   progress: number;

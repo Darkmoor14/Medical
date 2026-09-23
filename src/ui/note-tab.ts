@@ -1,5 +1,5 @@
 import { h, replace } from "./dom";
-import { articleCard } from "./articles";
+import { articleCard, highlight } from "./articles";
 import { progressText, showError } from "./status";
 import type { Engine } from "../engine";
 import {
@@ -16,6 +16,8 @@ import { buildQuery, findPhiInQuery, type QueryFilters } from "../query";
 import { fetchArticles, pubmedSearchUrl, searchPubMed } from "../pubmed";
 import { nerModels, type Settings } from "../settings";
 import { normalizeLabel } from "openmed";
+import { findRomanianPii, mergePii } from "../ro-pii";
+import { detectLanguage, segmentSentences, type NoteLanguage } from "../lang";
 
 const SAMPLE_NOTE = `DISCHARGE SUMMARY (synthetic example)
 Patient: Jordan Avery, DOB 04/12/1961, MRN 00482913
@@ -27,6 +29,17 @@ Hospital course: Treated with ceftriaxone and azithromycin, improved over 4 days
 
 Plan: Follow up with nephrology in 2 weeks. Continue apixaban 5 mg twice daily.`;
 
+const SAMPLE_NOTE_RO = `SCRISOARE MEDICALĂ (exemplu sintetic)
+Pacient: Popescu Ion, CNP 1610412400010, CI seria RX nr. 123456
+Domiciliu: Str. Mihai Eminescu nr. 12, bl. A3, ap. 7, sector 2, București. Tel. 0722 123 456.
+Internat în Spitalul Clinic Județean, FO nr. 4821/2024, medic curant Dr. Ionescu Maria.
+
+Diagnostic: Diabet zaharat tip 2. Boală cronică de rinichi stadiul 3. Pneumonie comunitară. Fibrilație atrială.
+
+Evoluție: s-a administrat ceftriaxonă și azitromicină, cu ameliorare în 4 zile. Metforminul a fost oprit din cauza scăderii RFG și reluat în doză redusă. S-a inițiat empagliflozin pentru protecție renală.
+
+Recomandări: control la nefrologie peste 2 săptămâni. Continuă apixaban 5 mg de două ori pe zi. Data externării: 18.03.2024.`;
+
 interface NoteState {
   text: string;
   pii: Span[];
@@ -34,6 +47,10 @@ interface NoteState {
   groups: TermGroup[];
   selected: Set<string>;
   customQuery: string | null;
+  language: NoteLanguage;
+  // For non-English notes: the on-device English translation that the
+  // clinical models were run on.
+  english: { text: string; entities: Entity[] } | null;
 }
 
 export function noteTab(engine: Engine, getSettings: () => Settings): HTMLElement {
@@ -49,6 +66,13 @@ export function noteTab(engine: Engine, getSettings: () => Settings): HTMLElemen
   });
   const status = h("p", { className: "status", role: "status" });
   const analyzeBtn = h("button", { className: "primary", type: "button" }, "Analyze note");
+  const langSelect = h(
+    "select",
+    { "aria-label": "Note language" },
+    h("option", { value: "auto" }, "Detect language"),
+    h("option", { value: "en" }, "English"),
+    h("option", { value: "ro" }, "Română (Romanian)"),
+  );
   const results = h("div", { className: "note-results" });
 
   analyzeBtn.addEventListener("click", async () => {
@@ -62,27 +86,63 @@ export function noteTab(engine: Engine, getSettings: () => Settings): HTMLElemen
     replace(results);
     status.textContent = "Loading models…";
     try {
+      const language: NoteLanguage =
+        langSelect.value === "auto" ? detectLanguage(text) : (langSelect.value as NoteLanguage);
+      const onProgress = (p: Parameters<typeof progressText>[0]) => (status.textContent = progressText(p));
       const analysis = await engine.analyzeNote(
         {
           text,
           piiModel: PII_MODEL,
           piiThreshold: s.piiThreshold,
-          nerModels: nerModels(s),
+          // The clinical models are English-only; other languages are
+          // translated first (below).
+          nerModels: language === "en" ? nerModels(s) : [],
           threshold: s.threshold,
         },
-        (p) => (status.textContent = progressText(p)),
+        onProgress,
       );
-      const entities = removePiiOverlaps(toEntities(text, analysis.clinical), analysis.pii);
+      // Romanian identifier rules always run: a CNP or +40 number can appear
+      // in any note, and over-redacting is the safe failure.
+      const pii = mergePii(analysis.pii, findRomanianPii(text));
+      let entities: Entity[] = [];
+      let english: NoteState["english"] = null;
+      if (language === "en") {
+        entities = removePiiOverlaps(toEntities(text, analysis.clinical), pii);
+      } else {
+        // Only the de-identified text is translated, so identifiers never
+        // reach the translation or the clinical models.
+        const segments = segmentSentences(redact(text, pii));
+        const translated = await engine.translate(
+          {
+            segments: segments.filter((g) => g.translate).map((g) => g.text),
+            model: s.translationModel,
+            srcLang: "ron_Latn",
+            tgtLang: "eng_Latn",
+          },
+          onProgress,
+        );
+        let i = 0;
+        const englishText = segments.map((g) => (g.translate ? translated[i++] : g.text)).join("");
+        const [doc] = await engine.extractMany(
+          { docs: [{ id: "en", text: englishText }], nerModels: nerModels(s), threshold: s.threshold },
+          onProgress,
+        );
+        const found = toEntities(englishText, doc?.spans ?? []).filter((e) => !/[[\]]/.test(e.text));
+        english = { text: englishText, entities: found };
+        entities = found;
+      }
       const groups = groupTerms(entities);
       state = {
         text,
-        pii: analysis.pii,
-        entities,
+        pii,
+        entities: language === "en" ? entities : [],
         groups,
         selected: defaultSelection(groups),
         customQuery: null,
+        language,
+        english,
       };
-      status.textContent = `Found ${analysis.pii.length} identifier${analysis.pii.length === 1 ? "" : "s"} (redacted) and ${groups.length} clinical term${groups.length === 1 ? "" : "s"}.`;
+      status.textContent = `${language === "ro" ? "Romanian note. " : ""}Found ${pii.length} identifier${pii.length === 1 ? "" : "s"} (redacted) and ${groups.length} clinical term${groups.length === 1 ? "" : "s"}.`;
       renderResults();
     } catch (err) {
       showError(status, err);
@@ -180,6 +240,18 @@ export function noteTab(engine: Engine, getSettings: () => Settings): HTMLElemen
         h("p", { className: "muted small" }, "Identifiers are replaced with labels. Clinical terms are highlighted. Nothing here has left your device."),
         h("pre", { className: "note-view" }, ...renderNote(st)),
       ),
+      st.english &&
+        h(
+          "section",
+          { className: "card" },
+          h("h2", {}, "English translation"),
+          h(
+            "p",
+            { className: "muted small" },
+            "Machine-translated on this device from the de-identified note, and used only to find clinical terms. Check it before relying on it.",
+          ),
+          h("pre", { className: "note-view" }, ...highlight(st.english.text, st.english.entities)),
+        ),
       h(
         "section",
         { className: "card" },
@@ -292,13 +364,25 @@ export function noteTab(engine: Engine, getSettings: () => Settings): HTMLElemen
             type: "button",
             onclick: () => {
               input.value = SAMPLE_NOTE;
+              langSelect.value = "auto";
             },
           },
           "Load synthetic example",
         ),
+        h(
+          "button",
+          {
+            type: "button",
+            onclick: () => {
+              input.value = SAMPLE_NOTE_RO;
+              langSelect.value = "auto";
+            },
+          },
+          "Exemplu sintetic (RO)",
+        ),
       ),
       input,
-      h("div", { className: "actions" }, analyzeBtn),
+      h("div", { className: "actions" }, analyzeBtn, langSelect),
       status,
     ),
     results,
@@ -327,6 +411,7 @@ function groupsByCategory(groups: TermGroup[]) {
 }
 
 function piiLabel(span: Span): string {
+  if (span.label === "CNP") return "CNP";
   return normalizeLabel(span.label) || span.label;
 }
 
@@ -364,12 +449,16 @@ function renderNote(st: NoteState): (Node | string)[] {
 }
 
 function redactedText(st: NoteState): string {
+  return redact(st.text, st.pii);
+}
+
+function redact(text: string, pii: Span[]): string {
   let out = "";
   let pos = 0;
-  for (const p of [...st.pii].sort((a, b) => a.start - b.start)) {
+  for (const p of [...pii].sort((a, b) => a.start - b.start)) {
     if (p.start < pos) continue;
-    out += st.text.slice(pos, p.start) + `[${piiLabel(p)}]`;
+    out += text.slice(pos, p.start) + `[${piiLabel(p)}]`;
     pos = p.end;
   }
-  return out + st.text.slice(pos);
+  return out + text.slice(pos);
 }

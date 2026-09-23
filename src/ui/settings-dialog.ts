@@ -2,7 +2,13 @@ import { h } from "./dom";
 import { progressText, shortModel, showError } from "./status";
 import type { Engine } from "../engine";
 import { DETECTORS, detectorModelId } from "../models";
-import { allModels, engineSettings, saveSettings, type Settings } from "../settings";
+import {
+  allModels,
+  DEFAULT_TRANSLATION_MODEL,
+  engineSettings,
+  saveSettings,
+  type Settings,
+} from "../settings";
 
 export function settingsDialog(
   engine: Engine,
@@ -150,6 +156,28 @@ export function settingsDialog(
           h("legend", {}, "Compute"),
           radio("device", "wasm", "CPU (WebAssembly)", "Works everywhere."),
           radio("device", "webgpu", "GPU (WebGPU)", "Faster in recent Chrome and Edge."),
+        ),
+        h(
+          "fieldset",
+          {},
+          h("legend", {}, "Romanian notes"),
+          h(
+            "label",
+            { className: "text" },
+            "Translation model (Romanian → English) ",
+            h("input", {
+              type: "text",
+              value: s.translationModel,
+              spellcheck: false,
+              oninput: (e: Event) =>
+                (s.translationModel = (e.target as HTMLInputElement).value.trim() || DEFAULT_TRANSLATION_MODEL),
+            }),
+          ),
+          h(
+            "p",
+            { className: "muted small" },
+            "Romanian notes are de-identified, translated on this device, and then analysed by the English clinical models. The default model is a one-time download of several hundred MB.",
+          ),
         ),
         h(
           "fieldset",

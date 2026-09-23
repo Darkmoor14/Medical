@@ -10,6 +10,8 @@ import type { WorkerRequest, WorkerResponse, EngineSettings } from "./worker-pro
 type Pipeline = Awaited<ReturnType<typeof loadOnnxModel>>;
 
 const pipelines = new Map<string, Promise<Pipeline>>();
+type Translator = (text: string, options: Record<string, unknown>) => Promise<{ translation_text: string }[]>;
+const translators = new Map<string, Promise<Translator>>();
 let settings: EngineSettings = { device: "wasm", source: "hub", localPath: "/models/" };
 
 function post(msg: WorkerResponse) {
@@ -31,7 +33,72 @@ function configure(next: EngineSettings) {
       p.then((pipe) => (pipe as unknown as { dispose?: () => void }).dispose?.()).catch(() => {});
     }
     pipelines.clear();
+    translators.clear();
   }
+}
+
+function downloadProgress(model: string, requestId: number) {
+  return (info: { status: string; file?: string; progress?: number }) => {
+    if (info.status === "progress" || info.status === "done" || info.status === "ready") {
+      post({
+        id: requestId,
+        type: "progress",
+        stage: "download",
+        model,
+        file: info.file ?? "",
+        progress: info.status === "progress" ? (info.progress ?? 0) : 100,
+      });
+    }
+  };
+}
+
+function getTranslator(model: string, requestId: number): Promise<Translator> {
+  let p = translators.get(model);
+  if (!p) {
+    // Seq2seq translation runs on the CPU backend with 8-bit weights: it is
+    // the most widely supported combination for these models.
+    p = transformers.pipeline("translation", model, {
+      device: "wasm",
+      dtype: "q8",
+      local_files_only: settings.source === "local",
+      progress_callback: downloadProgress(model, requestId),
+    } as never) as unknown as Promise<Translator>;
+    p.catch(() => translators.delete(model));
+    translators.set(model, p);
+  }
+  return p;
+}
+
+async function translate(
+  segments: string[],
+  model: string,
+  srcLang: string,
+  tgtLang: string,
+  requestId: number,
+): Promise<string[]> {
+  const translator = await getTranslator(model, requestId);
+  const out: string[] = [];
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i];
+    const lead = seg.match(/^\s*/)![0];
+    const trail = seg.match(/\s*$/)![0];
+    const body = seg.trim();
+    if (!body) {
+      out.push(seg);
+      continue;
+    }
+    const [result] = await translator(body, { src_lang: srcLang, tgt_lang: tgtLang, max_new_tokens: 512 });
+    out.push(lead + (result?.translation_text ?? body) + trail);
+    post({
+      id: requestId,
+      type: "progress",
+      stage: "translate",
+      model,
+      file: "",
+      progress: ((i + 1) / segments.length) * 100,
+    });
+  }
+  return out;
 }
 
 function getPipeline(model: string, requestId: number): Promise<Pipeline> {
@@ -48,18 +115,7 @@ function getPipeline(model: string, requestId: number): Promise<Pipeline> {
       localFilesOnly: local,
       allowRemoteModels: !local,
       pipelineOptions: {
-        progress_callback: (info: { status: string; file?: string; progress?: number }) => {
-          if (info.status === "progress" || info.status === "done" || info.status === "ready") {
-            post({
-              id: requestId,
-              type: "progress",
-              stage: "download",
-              model,
-              file: info.file ?? "",
-              progress: info.status === "progress" ? (info.progress ?? 0) : 100,
-            });
-          }
-        },
+        progress_callback: downloadProgress(model, requestId),
       },
     };
     p = loadOnnxModel(model, options);
@@ -104,6 +160,11 @@ async function handle(req: WorkerRequest) {
         clinical.push(...(await detect(model, req.text, req.threshold, req.id)));
       }
       post({ id: req.id, type: "result", result: { pii, clinical } });
+      return;
+    }
+    case "translate": {
+      const result = await translate(req.segments, req.model, req.srcLang, req.tgtLang, req.id);
+      post({ id: req.id, type: "result", result });
       return;
     }
     case "extractMany": {

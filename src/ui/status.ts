@@ -9,6 +9,7 @@ export function progressText(p: ProgressEvent): string {
     const file = p.file ? ` (${p.file})` : "";
     return `Downloading ${shortModel(p.model)}${file}… ${Math.round(p.progress)}%`;
   }
+  if (p.stage === "translate") return `Translating to English on this device… ${Math.round(p.progress)}%`;
   if (p.model) return `Running ${shortModel(p.model)}…`;
   return `Analyzing… ${Math.round(p.progress)}%`;
 }
