@@ -6,6 +6,10 @@ A browser app that combines [OpenMed](https://github.com/maziyarpanahi/openmed) 
 
 **Literature miner**: search PubMed, download up to 200 abstracts, and run OpenMed over them to see which conditions, drugs and genes they mention most. Click a term to filter the papers, or export a CSV.
 
+## Use it online
+
+The app is published with GitHub Pages at **https://darkmoor14.github.io/Medical/**. It is rebuilt automatically on every push (see `.github/workflows/pages.yml`). The page is static: notes are still processed only in your browser.
+
 ## Privacy model
 
 - Notes are processed **only in your browser**, inside a Web Worker running OpenMed ONNX models through Transformers.js. There is no backend.
