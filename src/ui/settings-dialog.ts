@@ -84,6 +84,16 @@ export function settingsDialog(
               h("span", {}, d.label, h("small", {}, shortModel(detectorModelId(d, s.size)))),
             ),
           ),
+          h(
+            "label",
+            { className: "check" },
+            h("input", {
+              type: "checkbox",
+              checked: s.findings,
+              onchange: (e: Event) => (s.findings = (e.target as HTMLInputElement).checked),
+            }),
+            h("span", {}, "Signs & symptoms", h("small", {}, "Rule-based list (pallor, oedema, murmurs…), no download")),
+          ),
           h("p", { className: "muted small" }, "Each detector is a separate model. More detectors means more to download and slower analysis."),
         ),
         h(

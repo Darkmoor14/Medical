@@ -20,6 +20,7 @@ import { findRomanianPii, mergePii } from "../ro-pii";
 import { ACCEPTED_FILES, extractText } from "../files";
 import { draftCard } from "./draft-card";
 import { applyGlossary, parseUserGlossary } from "../glossary";
+import { findSignsAndSymptoms } from "../findings";
 import { detectLanguage, prepareForTranslation, segmentSentences, type NoteLanguage } from "../lang";
 
 const SAMPLE_NOTE = `DISCHARGE SUMMARY (synthetic example)
@@ -145,7 +146,8 @@ export function noteTab(engine: Engine, getSettings: () => Settings): HTMLElemen
       let entities: Entity[] = [];
       let english: NoteState["english"] = null;
       if (language === "en") {
-        entities = removePiiOverlaps(toEntities(text, analysis.clinical), pii);
+        const findings = s.findings ? findSignsAndSymptoms(text) : [];
+        entities = removePiiOverlaps(toEntities(text, [...analysis.clinical, ...findings]), pii);
       } else {
         // Only the de-identified text is translated, so identifiers never
         // reach the translation or the clinical models.
@@ -176,7 +178,10 @@ export function noteTab(engine: Engine, getSettings: () => Settings): HTMLElemen
           { docs: [{ id: "en", text: englishText }], nerModels: nerModels(s), threshold: s.threshold },
           onProgress,
         );
-        const found = toEntities(englishText, doc?.spans ?? []).filter((e) => !/[[\]]/.test(e.text));
+        const findings = s.findings ? findSignsAndSymptoms(englishText) : [];
+        const found = toEntities(englishText, [...(doc?.spans ?? []), ...findings]).filter(
+          (e) => !/[[\]]/.test(e.text),
+        );
         english = { text: englishText, entities: found, glossaryHits };
         entities = found;
       }

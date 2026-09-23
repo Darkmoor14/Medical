@@ -12,6 +12,7 @@
   --redact-bg: #16202a;
   --redact-ink: #f6f7f9;
   --c-condition: #c2410c;
+  --c-finding: #a16207;
   --c-drug: #1d4ed8;
   --c-gene: #7e22ce;
   --c-anatomy: #0f766e;
@@ -37,6 +38,7 @@
     --redact-bg: #e6ebf0;
     --redact-ink: #0f1419;
     --c-condition: #fb923c;
+    --c-finding: #facc15;
     --c-drug: #60a5fa;
     --c-gene: #c084fc;
     --c-anatomy: #2dd4bf;
@@ -256,6 +258,7 @@ mark.ent.negated { text-decoration: line-through; text-decoration-color: var(--m
 mark.ent.selected { background: color-mix(in srgb, var(--cat) 32%, transparent); }
 
 .cat-condition { --cat: var(--c-condition); }
+.cat-finding { --cat: var(--c-finding); }
 .cat-drug { --cat: var(--c-drug); }
 .cat-gene { --cat: var(--c-gene); }
 .cat-anatomy { --cat: var(--c-anatomy); }

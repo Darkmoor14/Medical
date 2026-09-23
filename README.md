@@ -65,6 +65,16 @@ Nothing is invented. You review and edit every field while a live preview update
 
 This is a letter layout, not the official numbered CNAS forms (e.g. the printed *bilet de trimitere*).
 
+## Signs and symptoms
+
+OpenMed's browser models recognise named diseases and drugs, not examination findings. A rule-based **Signs & symptoms** detector (`src/findings.ts`, on by default and switchable in Settings) marks findings such as:
+
+- underweight, pallor, jaundice, dehydration, hyperpigmented skin, reduced subcutaneous fat;
+- an enlarged liver ("liver 2 cm below the costal margin"), oedema, lymphadenopathy;
+- crackles and rales, murmurs, fever, diarrhoea, meningeal irritation, and others.
+
+Negated findings ("no murmurs", "without rales") are struck through. Findings have their own colour and are not pre-selected for PubMed.
+
 ## Romanian notes
 
 Notes in Romanian are detected automatically (or pick **Română** next to *Analyze note*).

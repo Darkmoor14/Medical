@@ -32,10 +32,11 @@ export function detectorModelId(detector: Detector, size: ModelSize): string {
   return `OpenMed/OpenMed-NER-${detector.family}-${SIZE_SUFFIX[size]}-onnx-android`;
 }
 
-export type Category = "condition" | "drug" | "gene" | "anatomy" | "organism" | "cell" | "other";
+export type Category = "condition" | "finding" | "drug" | "gene" | "anatomy" | "organism" | "cell" | "other";
 
 export const CATEGORY_LABEL: Record<Category, string> = {
   condition: "Condition",
+  finding: "Sign / symptom",
   drug: "Drug / chemical",
   gene: "Gene / protein",
   anatomy: "Anatomy",
@@ -47,6 +48,7 @@ export const CATEGORY_LABEL: Record<Category, string> = {
 // Order categories are combined in when building PubMed queries.
 export const CATEGORY_ORDER: Category[] = [
   "condition",
+  "finding",
   "drug",
   "gene",
   "anatomy",
@@ -57,6 +59,7 @@ export const CATEGORY_ORDER: Category[] = [
 
 export function categoryFor(label: string): Category {
   const l = label.toUpperCase();
+  if (/FINDING|SIGN|SYMPTOM/.test(l)) return "finding";
   if (/DISEASE|CONDITION|PATHOLOGY|CANCER/.test(l)) return "condition";
   if (/CHEM|DRUG/.test(l)) return "drug";
   if (/GENE|PROTEIN|DNA|RNA/.test(l)) return "gene";

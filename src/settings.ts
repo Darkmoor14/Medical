@@ -8,6 +8,8 @@ export interface Settings extends EngineSettings {
   piiThreshold: number;
   apiKey: string;
   translationModel: string;
+  // Rule-based signs & symptoms detector (no model download).
+  findings: boolean;
   // Extra "romanian = english" glossary lines, applied before translation.
   userGlossary: string;
 }
@@ -24,6 +26,7 @@ export const DEFAULT_SETTINGS: Settings = {
   piiThreshold: 0.3,
   apiKey: "",
   translationModel: DEFAULT_TRANSLATION_MODEL,
+  findings: true,
   userGlossary: "",
   device: "wasm",
   source: "hub",

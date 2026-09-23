@@ -10,7 +10,7 @@ describe("applyGlossary", () => {
 
   it("tolerates missing diacritics and case, and inflected endings", () => {
     expect(applyGlossary("Fără semne de iritație meningeană. HIPOPOTASEMIE CORECTATĂ.").text).toBe(
-      "Fără semne de meningeal irritation. Hypokalaemia CORECTATĂ.",
+      "No signs of meningeal irritation. Hypokalaemia CORECTATĂ.",
     );
     expect(applyGlossary("Abdomen suplu, elastic, nedureros la palpare superficiala si profunda").text).toBe(
       "Soft, supple abdomen, non-tender on palpation",
@@ -33,5 +33,17 @@ describe("applyGlossary", () => {
     const user = parseUserGlossary("splina nepalpabila = spleen not palpable\nbad line\n = x");
     expect(user).toHaveLength(1);
     expect(applyGlossary("splină nepalpabilă", user).text).toBe("spleen not palpable");
+  });
+});
+
+describe("exam paragraph", () => {
+  it("covers the general examination vocabulary", () => {
+    const { text } = applyGlossary(
+      "Stare nutritie subponderala, Stare de constienta pastrata. Facies expresiv, tegumente hiperpigmentate, deshidratate; mucoase palide, usor deshidratate. Tesut conjuctiv-adipos slab reprezentat.",
+    );
+    expect(text).toContain("Underweight nutritional status");
+    expect(text).toContain("Conscious");
+    expect(text).toContain("Reduced subcutaneous fat");
+    expect(text).toContain("hyperpigmented skin, dehydrated; pale mucous membranes, mildly dehydrated");
   });
 });
