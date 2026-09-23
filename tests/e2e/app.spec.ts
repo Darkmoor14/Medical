@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { EFETCH_XML } from "../fixtures";
+import mammoth from "mammoth";
 
 // Fake engine: tags a fixed vocabulary with regexes instead of running models.
 async function installFakeEngine(page: Page) {
@@ -149,6 +150,43 @@ test("rejects old .doc files with a clear message", async ({ page }) => {
     buffer: Buffer.from("x"),
   });
   await expect(page.getByText(/Old \.doc files are not supported/)).toBeVisible();
+});
+
+test("drafts a discharge letter from a Romanian note and downloads it as .docx", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Exemplu sintetic (RO)" }).click();
+  await page.getByRole("button", { name: "Analyze note" }).click();
+
+  const card = page.locator("section", { has: page.getByRole("heading", { name: "Draft a document" }) });
+  await expect(card).toBeVisible();
+  await expect(card.getByLabel("Patient name")).toHaveValue("Popescu Ion");
+  await expect(card.getByLabel("CNP")).toHaveValue("1610412400010");
+  await expect(card.getByLabel("Diagnosis 1", { exact: true })).toHaveValue("Diabet zaharat tip 2");
+  await expect(card.getByLabel("Diagnosis 4", { exact: true })).toHaveValue("Fibrilație atrială");
+
+  await card.getByLabel("ICD-10 code for diagnosis 1").fill("E11.9");
+  await card.getByRole("radio", { name: "Not needed" }).first().check();
+  const preview = card.locator(".doc-preview");
+  await expect(preview).toContainText("pacientul Popescu Ion");
+  await expect(preview).toContainText("Diabet zaharat tip 2 (E11.9)");
+  await expect(preview).toContainText("[x] Nu s-a eliberat prescripție medicală deoarece nu a fost necesar");
+
+  // Editing the query above must not reset the draft.
+  await page.getByRole("checkbox", { name: /Atrial fibrillation/ }).uncheck();
+  await expect(card.getByLabel("ICD-10 code for diagnosis 1")).toHaveValue("E11.9");
+
+  const [download] = await Promise.all([page.waitForEvent("download"), card.getByRole("button", { name: "Download .docx" }).click()]);
+  expect(download.suggestedFilename()).toBe("scrisoare-medicala-PROIECT.docx");
+  const { value } = await mammoth.extractRawText({ path: await download.path() });
+  expect(value).toContain("SCRISOARE MEDICALĂ / BILET DE EXTERNARE");
+  expect(value).toContain("PROIECT generat automat");
+  expect(value).toContain("Diabet zaharat tip 2 (E11.9)");
+  expect(value).toContain("Popescu Ion");
+
+  await card.getByLabel("Document type").selectOption("referral");
+  await card.getByLabel("Refer to (specialty)").fill("nefrologie");
+  await expect(preview).toContainText("Către: specialitatea nefrologie");
+  await card.screenshot({ path: "test-results/draft.png" });
 });
 
 test("literature miner tallies terms and filters papers", async ({ page }) => {

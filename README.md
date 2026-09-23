@@ -47,6 +47,24 @@ Then open **Settings → Where models load from → Local folder** (`/models/`).
 npm run build        # outputs dist/, which can be served from any static host or opened via `npm run preview`
 ```
 
+## Drafting documents
+
+After *Analyze note*, the **Draft a document** card prepares a Romanian draft of a:
+
+- **discharge letter** (Scrisoare medicală / Bilet de externare), including the standard end-of-letter statements about prescriptions, medical leave, home care and devices;
+- **diagnosis summary**, a table with ICD-10 codes that you enter;
+- **referral letter** (Scrisoare de trimitere).
+
+How the form is filled in:
+
+- **Patient details** (name, CNP, age, address, dates, FO, doctor, unit) come from the identifiers found in the note, and sex is taken from the CNP.
+- **Sections** (Diagnostice, Epicriză, Examen obiectiv, Tratament, Recomandări, Consulturi) are read from the note's own headings.
+- **Diagnoses** fall back to the detected conditions if the note has no diagnosis section.
+
+Nothing is invented. You review and edit every field while a live preview updates, then download a **.docx** made in the browser and marked *PROIECT* (draft). The file contains the real patient details, so it never leaves your device unless you send it.
+
+This is a letter layout, not the official numbered CNAS forms (e.g. the printed *bilet de trimitere*).
+
 ## Romanian notes
 
 Notes in Romanian are detected automatically (or pick **Română** next to *Analyze note*).

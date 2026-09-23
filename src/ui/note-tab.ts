@@ -18,6 +18,7 @@ import { nerModels, type Settings } from "../settings";
 import { normalizeLabel } from "openmed";
 import { findRomanianPii, mergePii } from "../ro-pii";
 import { ACCEPTED_FILES, extractText } from "../files";
+import { draftCard } from "./draft-card";
 import { detectLanguage, prepareForTranslation, segmentSentences, type NoteLanguage } from "../lang";
 
 const SAMPLE_NOTE = `DISCHARGE SUMMARY (synthetic example)
@@ -56,6 +57,8 @@ interface NoteState {
 
 export function noteTab(engine: Engine, getSettings: () => Settings): HTMLElement {
   let state: NoteState | null = null;
+  // Created once per analysis so edits survive re-renders of the results.
+  let draftEl: HTMLElement | null = null;
   const filters: QueryFilters = { years: 10, humansOnly: true };
 
   const input = h("textarea", {
@@ -175,6 +178,7 @@ export function noteTab(engine: Engine, getSettings: () => Settings): HTMLElemen
         english,
       };
       status.textContent = `${language === "ro" ? "Romanian note. " : ""}Found ${pii.length} identifier${pii.length === 1 ? "" : "s"} (redacted) and ${groups.length} clinical term${groups.length === 1 ? "" : "s"}.`;
+      draftEl = draftCard(text, pii, groups, language);
       renderResults();
     } catch (err) {
       showError(status, err);
@@ -361,6 +365,7 @@ export function noteTab(engine: Engine, getSettings: () => Settings): HTMLElemen
         paperStatus,
         papers,
       ),
+      draftEl,
     );
 
     function filterToggle(label: string, key: "reviewsOnly" | "trialsOnly" | "humansOnly" | "englishOnly") {

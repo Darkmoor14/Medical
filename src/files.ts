@@ -21,12 +21,45 @@ export async function extractText(file: File): Promise<ExtractedFile> {
   throw new Error(`Unsupported file type: ${file.name}. Use .docx, .pdf or .txt.`);
 }
 
+// Word documents are converted to HTML first so tables keep their rows:
+// each row becomes one line with cells separated by " | ".
 async function docxText(file: File): Promise<string> {
   const mammoth = await import("mammoth");
-  const { value } = await (mammoth.default ?? mammoth).extractRawText({
-    arrayBuffer: await file.arrayBuffer(),
-  });
-  return normalize(value);
+  const { value } = await (mammoth.default ?? mammoth).convertToHtml({ arrayBuffer: await file.arrayBuffer() });
+  return normalize(htmlToText(value));
+}
+
+export function htmlToText(html: string): string {
+  const doc = new DOMParser().parseFromString(`<body>${html}</body>`, "text/html");
+  const out: string[] = [];
+  // Paragraphs inside one cell (e.g. role, title and name in a signature
+  // table) are kept apart with " / " instead of running together.
+  const cellText = (el: Element) => {
+    const parts = Array.from(el.querySelectorAll("p, li")).map((p) => (p.textContent ?? "").replace(/\s+/g, " ").trim());
+    const text = parts.length ? parts.filter(Boolean).join(" / ") : (el.textContent ?? "");
+    return text.replace(/\s+/g, " ").trim();
+  };
+  const walk = (node: Element) => {
+    for (const el of Array.from(node.children)) {
+      const tag = el.tagName.toLowerCase();
+      if (tag === "table") {
+        for (const row of Array.from(el.querySelectorAll("tr"))) {
+          const cells = Array.from(row.children).map(cellText);
+          if (cells.some(Boolean)) out.push(cells.join(" | "));
+        }
+        out.push("");
+      } else if (tag === "ul" || tag === "ol") {
+        for (const li of Array.from(el.children)) out.push(`- ${cellText(li)}`);
+        out.push("");
+      } else if (/^(p|h[1-6])$/.test(tag)) {
+        out.push((el.textContent ?? "").trim(), "");
+      } else {
+        walk(el);
+      }
+    }
+  };
+  walk(doc.body);
+  return out.join("\n");
 }
 
 async function pdfText(file: File): Promise<ExtractedFile> {

@@ -408,3 +408,55 @@ footer {
   dialog label.range { grid-template-columns: 1fr 3em; }
   dialog label.range input { grid-column: 1 / -1; grid-row: 2; }
 }
+
+.draft-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  margin-top: 8px;
+}
+.draft-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-content: start; }
+.draft-form .field { display: grid; gap: 4px; font-size: 0.85rem; color: var(--muted); }
+.draft-form .field.wide { grid-column: 1 / -1; }
+.draft-form .field input,
+.draft-form .field textarea,
+.draft-form .field select { color: var(--text); font-size: 0.92rem; width: 100%; }
+.draft-form fieldset { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; margin: 0; }
+.draft-form legend { padding: 0 4px; font-weight: 600; color: var(--text); }
+.dx-list { display: grid; gap: 6px; }
+.dx-row { display: grid; grid-template-columns: 1.6em 1fr 6.5em auto; gap: 6px; align-items: center; }
+.dx-row input { width: 100%; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); padding: 6px 8px; font: inherit; color: var(--text); }
+.dx-row button { padding: 4px 8px; }
+.dx-num { color: var(--muted); text-align: right; }
+.draft-form .actions .chip { padding: 3px 10px; font-size: 0.82rem; }
+.check-row { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; padding: 4px 0; color: var(--text); }
+.check-row > span { min-width: 16em; }
+.doc-preview {
+  background: #fff;
+  color: #111;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px 22px;
+  font: 0.86rem/1.5 Calibri, "Segoe UI", system-ui, sans-serif;
+  max-height: 780px;
+  overflow: auto;
+}
+.doc-preview h3.doc-title { text-align: center; font-size: 1rem; margin: 10px 0 12px; }
+.doc-preview h4 { font-size: 0.86rem; margin: 12px 0 4px; }
+.doc-preview p { margin: 0 0 6px; white-space: pre-wrap; }
+.doc-preview ol { margin: 0 0 6px; padding-left: 22px; }
+.doc-preview table { border-collapse: collapse; width: 100%; margin-bottom: 8px; }
+.doc-preview th, .doc-preview td { border: 1px solid #bbb; padding: 3px 6px; text-align: left; }
+.doc-preview .doc-draft { color: #b42318; font-style: italic; font-size: 0.78rem; }
+.doc-preview .doc-meta { font-weight: 600; }
+.doc-preview .doc-checks { margin-top: 10px; }
+.doc-preview .doc-checks > div { margin-bottom: 6px; }
+.doc-preview .doc-signature { text-align: right; margin-top: 18px; }
+@media (max-width: 860px) {
+  .draft-layout { grid-template-columns: 1fr; }
+}
+@media (max-width: 520px) {
+  .draft-form { grid-template-columns: 1fr; }
+  .dx-row { grid-template-columns: 1.6em 1fr auto; }
+  .dx-row .icd { grid-column: 2; }
+}
