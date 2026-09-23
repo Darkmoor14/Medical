@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <title>OpenMed PubMed Explorer</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230f766e'/%3E%3Cpath d='M13 7h6v6h6v6h-6v6h-6v-6H7v-6h6z' fill='white'/%3E%3C/svg%3E" />
+  </head>
+  <body>
+    <header class="top">
+      <div class="brand">
+        <span class="logo" aria-hidden="true"></span>
+        <div>
+          <h1>OpenMed PubMed Explorer</h1>
+          <p class="tagline">Clinical text analysed on your device, with evidence from PubMed</p>
+        </div>
+      </div>
+      <button id="settings-btn" type="button">Settings</button>
+    </header>
+
+    <div class="privacy" role="note">
+      <strong>Private by design.</strong>
+      Notes are de-identified and analysed in this browser using OpenMed models. The only thing sent anywhere is the PubMed search you choose to run, and it is checked against the identifiers found in your note.
+    </div>
+
+    <nav id="tabs" role="tablist" aria-label="Views"></nav>
+    <main id="panel" role="tabpanel"></main>
+
+    <footer>
+      Built with <a href="https://github.com/maziyarpanahi/openmed" target="_blank" rel="noopener noreferrer">OpenMed</a>
+      and <a href="https://www.ncbi.nlm.nih.gov/books/NBK25501/" target="_blank" rel="noopener noreferrer">NCBI E-utilities</a>.
+      For research and education. Not a medical device, and not a substitute for clinical judgement.
+    </footer>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

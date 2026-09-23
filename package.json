@@ -1,0 +1,38 @@
+{
+  "name": "openmed-pubmed-explorer",
+  "version": "1.0.0",
+  "description": "Browser app that de-identifies clinical notes and extracts entities with OpenMed, then finds evidence on PubMed.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p . && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "typecheck": "tsc -p .",
+    "download-models": "node scripts/download-models.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Darkmoor14/Medical.git"
+  },
+  "author": "",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/Darkmoor14/Medical/issues"
+  },
+  "homepage": "https://github.com/Darkmoor14/Medical#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "happy-dom": "^20.14.5",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.1"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^4.3.0",
+    "onnxruntime-web": "^1.30.0",
+    "openmed": "^2.5.0"
+  },
+  "private": true,
+  "type": "module"
+}
