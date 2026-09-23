@@ -18,7 +18,7 @@ import { nerModels, type Settings } from "../settings";
 import { normalizeLabel } from "openmed";
 import { findRomanianPii, mergePii } from "../ro-pii";
 import { ACCEPTED_FILES, extractText } from "../files";
-import { detectLanguage, segmentSentences, type NoteLanguage } from "../lang";
+import { detectLanguage, prepareForTranslation, segmentSentences, type NoteLanguage } from "../lang";
 
 const SAMPLE_NOTE = `DISCHARGE SUMMARY (synthetic example)
 Patient: Jordan Avery, DOB 04/12/1961, MRN 00482913
@@ -146,7 +146,7 @@ export function noteTab(engine: Engine, getSettings: () => Settings): HTMLElemen
         const segments = segmentSentences(redact(text, pii));
         const translated = await engine.translate(
           {
-            segments: segments.filter((g) => g.translate).map((g) => g.text),
+            segments: segments.filter((g) => g.translate).map((g) => prepareForTranslation(g.text)),
             model: s.translationModel,
             srcLang: "ron_Latn",
             tgtLang: "eng_Latn",

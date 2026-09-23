@@ -57,3 +57,27 @@ export function segmentSentences(text: string, maxChars = 400): Segment[] {
   }
   return out;
 }
+
+// Translation models handle ALL-CAPS text poorly (common for diagnosis lines
+// in Romanian discharge letters), so shouting segments are sentence-cased
+// first. Redaction placeholders like [PERSON] are kept as they are.
+export function prepareForTranslation(segment: string): string {
+  const letters = segment.replace(/\[[A-Z_]+\]/g, "").match(/\p{L}/gu) ?? [];
+  const upper = letters.filter((c) => c === c.toUpperCase() && c !== c.toLowerCase()).length;
+  if (letters.length < 8 || upper / letters.length < 0.7) return segment;
+  let startOfSentence = true;
+  return segment.replace(/\[[A-Z_]+\]|\p{L}+|[.!?]/gu, (tok) => {
+    if (tok.startsWith("[")) {
+      startOfSentence = false;
+      return tok;
+    }
+    if (/^[.!?]$/.test(tok)) {
+      startOfSentence = true;
+      return tok;
+    }
+    const lower = tok.toLowerCase();
+    const out = startOfSentence ? lower[0].toUpperCase() + lower.slice(1) : lower;
+    startOfSentence = false;
+    return out;
+  });
+}

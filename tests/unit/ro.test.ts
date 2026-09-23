@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { findRomanianPii, isValidCnp, mergePii } from "../../src/ro-pii";
-import { detectLanguage, segmentSentences } from "../../src/lang";
+import { detectLanguage, prepareForTranslation, segmentSentences } from "../../src/lang";
 
 const found = (text: string) => findRomanianPii(text).map((s) => [s.label, text.slice(s.start, s.end)]);
 
@@ -38,6 +38,31 @@ describe("findRomanianPii", () => {
         ["EMAIL", "ion.pop@exemplu.ro"],
       ]),
     );
+  });
+
+  it("finds day.month dates but not decimals", () => {
+    expect(found("bilanț superpozabil celui din 31.08, consult în data de 14.09")).toEqual([
+      ["DATE", "31.08"],
+      ["DATE", "14.09"],
+    ]);
+    expect(found("Hidratare 1.5l lichide/zi, diametru 6.5 cm, Hb 12.4 g/dl")).toEqual([]);
+  });
+
+  it("handles hospital headers: caps names, cedilla letters, phone lists", () => {
+    const t = "SPITALUL CLINIC JUDEŢEAN DE URGENŢĂ PLOIEŞTI\nPloieşti - Sud, str. Ghe. Exemplu, nr. 5\nTel:0244 - 111111, 222222 ; Fax. 0244 – 333333";
+    const labels = found(t);
+    expect(labels).toContainEqual(["ORGANIZATION", "SPITALUL CLINIC JUDEŢEAN DE URGENŢĂ PLOIEŞTI"]);
+    expect(labels).toContainEqual(["LOCATION", "Ploieşti"]);
+    expect(labels).toContainEqual(["PHONE", "0244 - 111111, 222222"]);
+    expect(labels).toContainEqual(["PHONE", "0244 – 333333"]);
+  });
+
+  it("reads signature blocks: chained titles, headings are not names", () => {
+    const t = "Prof. Dr. Pop Ana- Maria\n\nMedic curant\n\nMedic specialist medicina interna\n\nDr. Rus Ioana";
+    expect(found(t)).toEqual([
+      ["PERSON", "Pop Ana- Maria"],
+      ["PERSON", "Rus Ioana"],
+    ]);
   });
 
   it("finds addresses and administrative units", () => {
@@ -108,5 +133,13 @@ describe("language helpers", () => {
     expect(segs.map((s) => s.text).join("")).toBe(text);
     expect(segs.some((s) => s.text.includes("2.5 mg"))).toBe(true);
     expect(segs.find((s) => s.text === "\n\n")?.translate).toBe(false);
+  });
+
+  it("sentence-cases ALL-CAPS segments before translation", () => {
+    expect(prepareForTranslation("SINDROM DIAREIC REMIS. HERNIE OMBILICALĂ NECOMPLICATĂ. ")).toBe(
+      "Sindrom diareic remis. Hernie ombilicală necomplicată. ",
+    );
+    expect(prepareForTranslation("Pacientă cu HTA și DZ tip 2.")).toBe("Pacientă cu HTA și DZ tip 2.");
+    expect(prepareForTranslation("PACIENTA [PERSON] INTERNATĂ")).toBe("Pacienta [PERSON] internată");
   });
 });

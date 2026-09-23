@@ -39,19 +39,31 @@ const MONTHS =
   "ianuarie|februarie|martie|aprilie|mai|iunie|iulie|august|septembrie|octombrie|noiembrie|decembrie|" +
   "ian|feb|mar|apr|iun|iul|aug|sept?|oct|noi|dec";
 
-const CITIES = [
-  "București", "Bucuresti", "Alba Iulia", "Arad", "Pitești", "Pitesti", "Bacău", "Bacau", "Oradea",
-  "Bistrița", "Bistrita", "Botoșani", "Botosani", "Brașov", "Brasov", "Brăila", "Braila", "Buzău", "Buzau",
-  "Reșița", "Resita", "Călărași", "Calarasi", "Cluj-Napoca", "Cluj", "Constanța", "Constanta",
-  "Sfântu Gheorghe", "Sfantu Gheorghe", "Târgoviște", "Targoviste", "Craiova", "Galați", "Galati",
-  "Giurgiu", "Târgu Jiu", "Targu Jiu", "Miercurea Ciuc", "Deva", "Slobozia", "Iași", "Iasi",
-  "Baia Mare", "Drobeta-Turnu Severin", "Târgu Mureș", "Targu Mures", "Piatra Neamț", "Piatra Neamt",
-  "Slatina", "Ploiești", "Ploiesti", "Satu Mare", "Zalău", "Zalau", "Sibiu", "Suceava", "Alexandria",
-  "Timișoara", "Timisoara", "Tulcea", "Vaslui", "Râmnicu Vâlcea", "Ramnicu Valcea", "Focșani", "Focsani",
-  "Ilfov", "Chișinău", "Chisinau",
-]
-  .sort((a, b) => b.length - a.length)
-  .join("|");
+const CITY_NAMES = [
+  "București", "Alba Iulia", "Arad", "Pitești", "Bacău", "Oradea", "Bistrița", "Botoșani", "Brașov",
+  "Brăila", "Buzău", "Reșița", "Călărași", "Cluj-Napoca", "Cluj", "Constanța", "Sfântu Gheorghe",
+  "Târgoviște", "Craiova", "Galați", "Giurgiu", "Târgu Jiu", "Miercurea Ciuc", "Deva", "Slobozia", "Iași",
+  "Baia Mare", "Drobeta-Turnu Severin", "Târgu Mureș", "Piatra Neamț", "Slatina", "Ploiești", "Satu Mare",
+  "Zalău", "Sibiu", "Suceava", "Alexandria", "Timișoara", "Tulcea", "Vaslui", "Râmnicu Vâlcea", "Focșani",
+  "Ilfov", "Chișinău",
+];
+
+// Match a place name regardless of case, missing diacritics, legacy cedilla
+// letters (ş ţ) and spacing around hyphens ("Târgu - Mureş", "TARGU-MURES").
+const LETTER_VARIANTS: Record<string, string> = {
+  ă: "[ăĂaA]", â: "[âÂaA]", î: "[îÎiI]", ș: "[șȘşŞsS]", ț: "[țȚţŢtT]",
+};
+function looseName(name: string): string {
+  return [...name]
+    .map((ch) => {
+      const lower = ch.toLowerCase();
+      if (LETTER_VARIANTS[lower]) return LETTER_VARIANTS[lower];
+      if (ch === "-" || ch === " ") return String.raw`\s*[- ]\s*`;
+      return /\p{L}/u.test(ch) ? `[${lower}${lower.toUpperCase()}]` : ch;
+    })
+    .join("");
+}
+const CITIES = CITY_NAMES.sort((a, b) => b.length - a.length).map(looseName).join("|");
 
 interface Rule {
   label: string;
@@ -95,9 +107,20 @@ const RULES: Rule[] = [
     label: "PHONE",
     re: /(?<![\w+])(?:(?:\+|00)40[\s.-]?|0)(?:7\d{2}[\s.-]?\d{3}[\s.-]?\d{3}|[23]\d{1,2}[\s.-]?\d{3}[\s.-]?\d{3,4})(?!\d)/g,
   },
+  // "0265 - 212111", "0265/215768".
+  { label: "PHONE", re: /(?<!\d)0\d{2,3}[ \t]*[-–/.]?[ \t]*\d{6}(?!\d)/g },
+  // Any number list right after Tel/Fax/Mobil: "Tel: 0265 212111, 211292, 217235".
+  {
+    label: "PHONE",
+    re: /\b(?:Tel|TEL|Telefon|TELEFON|Fax|FAX|Mobil|MOBIL|GSM)\.?[ \t]*:?[ \t]*((?:\+?\d[\d \t().\/–-]{4,}\d)(?:[ \t]*[,;][ \t]*\+?\d[\d \t().\/–-]{4,}\d)*)/g,
+    group: 1,
+  },
   { label: "EMAIL", re: /\b[\w.+-]+@[\w-]+(?:\.[\w-]+)+\b/g },
   // Dates: 12.04.1961, 12/04/61, 12-04-1961, 12 aprilie 1961.
   { label: "DATE", re: /(?<![\d.])\d{1,2}[./-]\d{1,2}[./-](?:\d{4}|\d{2})(?![\d])/g },
+  // Day and month without a year ("din 31.08", "în data de 14.09"). The month
+  // must have two digits so decimals like "1.5 l" are left alone.
+  { label: "DATE", re: /(?<![\d.,])(?:0?[1-9]|[12]\d|3[01])\.(?:0[1-9]|1[0-2])(?![\d.,]?\d)/g },
   { label: "DATE", re: new RegExp(String.raw`\b\d{1,2}\s+(?:${MONTHS})\.?\s+\d{4}\b`, "gi") },
   // Street addresses with optional nr./bl./sc./et./ap. tail.
   {
@@ -123,7 +146,8 @@ const RULES: Rule[] = [
   {
     label: "ORGANIZATION",
     re: new RegExp(
-      String.raw`\b(?:Spitalul|Clinica|Institutul|Centrul Medical|Policlinica|Cabinetul(?: medical)?)\s+${FULL_NAME}`,
+      String.raw`\b(?:Spitalul|SPITALUL|Spital|SPITAL|Clinica|CLINICA|Institutul|INSTITUTUL|Centrul Medical|CENTRUL MEDICAL|Policlinica|POLICLINICA|Cabinetul(?: medical)?|CABINETUL(?: MEDICAL)?)` +
+        String.raw`(?:[ \t]+(?:de|DE|din|DIN|și|ȘI|si|SI|pentru|PENTRU))?(?:[ \t]+${NAME}(?:[ \t]+(?:de|DE|din|DIN|și|ȘI|si|SI|pentru|PENTRU))?){1,8}`,
       "g",
     ),
   },
@@ -131,19 +155,25 @@ const RULES: Rule[] = [
   { label: "LOCATION", re: new RegExp(String.raw`(?<![\p{L}])(?:${CITIES})(?![\p{L}])`, "gu") },
   // Postal code after a cue word.
   { label: "ZIPCODE", re: /\b(?:cod po(?:ș|ş|s)tal|CP)\s*:?\s*(\d{6})\b/gi, group: 1 },
-  // Names after titles or field labels: "Dr. Ionescu Maria", "Pacient: Popescu Ion",
-  // "Nume: ...", "As. Pop", "medic curant Georgescu".
+  // Names after titles or field labels: "Dr. Ionescu Maria", "Prof. Dr. Pop Ana",
+  // "Pacient: Popescu Ion", "Nume: ...", "medic curant Georgescu". The name
+  // must be on the same line, so headings in signature blocks are not taken
+  // for names.
   {
     label: "PERSON",
     re: new RegExp(
-      String.raw`(?:\b(?:Dr|dr|Prof|prof|As|as|Asist|Conf|Șef lucr|Sef lucr|Ing|D-na|D-l|Dna|Dl|Doamna|Domnul)\.?\s+` +
-        String.raw`|\b(?:[Pp]acient(?:ul|a|ului|ei)?|[Nn]ume(?:le)?(?: (?:și|si) prenume(?:le)?)?|[Pp]renume(?:le)?|[Mm]edic(?: curant| de familie| primar| specialist| rezident)?|[Aa]parținător|[Aa]partinator|[Ss]emnătura|[Ss]emnatura|[Mm]ama|[Tt]atăl|[Tt]atal|[Ss]oți(?:a|ul)|[Ss]oti(?:a|ul))\s*:?\s+(?:(?:Dr|dr|Prof|prof|As|as|Conf|conf)\.?\s+)?)` +
+      String.raw`(?:\b(?:Dr|dr|Prof|prof|As|as|Asist|Conf|conf|Șef lucr|Sef lucr|Ing|D-na|D-l|Dna|Dl|Doamna|Domnul)\.?[ \t]+` +
+        String.raw`|\b(?:[Pp]acient(?:ul|a|ului|ei)?|PACIENT(?:UL|A)?|[Nn]ume(?:le)?(?: (?:și|si) prenume(?:le)?)?|NUME|[Pp]renume(?:le)?|[Mm]edic(?: curant| de familie| primar| specialist| rezident)?|[Aa]parținător|[Aa]partinator|[Ss]emnătura|[Ss]emnatura|[Mm]ama|[Tt]atăl|[Tt]atal|[Ss]oți(?:a|ul)|[Ss]oti(?:a|ul))[ \t]*:?[ \t]+)` +
+        String.raw`(?:(?:Dr|dr|Prof|prof|As|as|Conf|conf)\.?[ \t]+)*` +
         `(${FULL_NAME})`,
       "g",
     ),
     group: 1,
-    // Avoid redacting clinical words that happen to follow "pacient".
-    accept: (v) => !/^(?:cu|de|în|in|la|din|prezintă|prezinta|internat|internată|cunoscut|cunoscută|diagnosticat|diagnosticată|afebril|afebrilă|echilibrat|stabil|Dr)$/i.test(v.split(/\s/)[0]),
+    // Avoid redacting clinical or heading words that follow a label.
+    accept: (v) =>
+      !/^(?:cu|de|în|in|la|din|prezintă|prezinta|internat|internată|cunoscut|cunoscută|diagnosticat|diagnosticată|afebril|afebrilă|echilibrat|stabil|Dr|Prof|Medic|Medicina|Medicină|Specialist|Primar|Rezident|Curant|Șeful|Seful|Clinica|Spitalul)$/i.test(
+        v.split(/[\s-]/)[0],
+      ),
   },
 ];
 
