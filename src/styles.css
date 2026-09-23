@@ -251,6 +251,8 @@ mark.ent {
   border-radius: 3px;
   padding: 0 1px;
 }
+mark.ent.negated { text-decoration: line-through; text-decoration-color: var(--muted); background: none; border-bottom-style: dashed; }
+.chip.negated { border-style: dashed; color: var(--muted); }
 mark.ent.selected { background: color-mix(in srgb, var(--cat) 32%, transparent); }
 
 .cat-condition { --cat: var(--c-condition); }

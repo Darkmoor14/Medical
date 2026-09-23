@@ -19,7 +19,7 @@ export function prefillDraft(text: string, pii: Span[], groups: TermGroup[]): Dr
   d.doctor = patient.doctor;
   d.unit = patient.unit;
   const fromNote = sections.diagnoses ? splitDiagnoses(sections.diagnoses) : [];
-  const fromTerms = groups.filter((g) => g.category === "condition").map((g) => g.display);
+  const fromTerms = groups.filter((g) => g.category === "condition" && !g.negated).map((g) => g.display);
   d.diagnoses = (fromNote.length ? fromNote : fromTerms).map((text) => ({ text, icd: "" }));
   d.history = sections.history ?? "";
   d.exam = sections.exam ?? "";

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   chunkText,
+  isNegated,
   groupTerms,
   normalizeTerm,
   removePiiOverlaps,
@@ -85,6 +86,7 @@ describe("grouping and tallies", () => {
       score: 1,
       text: t,
       category: categoryFor(label),
+      negated: false,
     });
     const stats = tallyByDocument([
       { id: "1", entities: [mk("COPD"), mk("COPD"), mk("COPD")] },
@@ -114,5 +116,40 @@ describe("models", () => {
     expect(categoryFor("ORGANISM")).toBe("organism");
     expect(categoryFor("ORGAN")).toBe("anatomy");
     expect(categoryFor("CANCER")).toBe("condition");
+  });
+});
+
+describe("word snapping, fragment merging and negation", () => {
+  it("grows sub-word pieces to whole words and joins them", () => {
+    const text = "Examination: no signs of meningeal irritation.";
+    const start = text.indexOf("meningeal");
+    const ents = toEntities(text, [
+      { start, end: start + 3, label: "DISEASE", score: 0.8 }, // "men"
+      { start: start + 8, end: start + 20, label: "DISEASE", score: 0.7 }, // "l irritation"
+    ]);
+    expect(ents.map((e) => e.text)).toEqual(["meningeal irritation"]);
+    expect(ents[0].negated).toBe(true);
+  });
+
+  it("does not join different categories or distant words", () => {
+    const text = "metformin, asthma";
+    const ents = toEntities(text, [
+      { start: 0, end: 9, label: "CHEM", score: 1 },
+      { start: 11, end: 17, label: "DISEASE", score: 1 },
+    ]);
+    expect(ents.map((e) => e.text)).toEqual(["metformin", "asthma"]);
+  });
+
+  it("detects common negation cues in English and Romanian", () => {
+    const neg = (text: string, term: string) => {
+      const start = text.indexOf(term);
+      return isNegated(text, { start, end: start + term.length });
+    };
+    expect(neg("Patient denies chest pain.", "chest pain")).toBe(true);
+    expect(neg("Negative for C. difficile toxin.", "difficile")).toBe(true);
+    expect(neg("Pulmonary embolism was ruled out.", "Pulmonary embolism")).toBe(true);
+    expect(neg("Fără semne de iritație meningeană.", "iritație meningeană")).toBe(true);
+    expect(neg("Known type 2 diabetes. No fever.", "type 2 diabetes")).toBe(false);
+    expect(neg("Pneumonia, improved without complications.", "Pneumonia")).toBe(false);
   });
 });

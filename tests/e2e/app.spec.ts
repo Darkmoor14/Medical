@@ -8,6 +8,8 @@ async function installFakeEngine(page: Page) {
     const vocab: [RegExp, string][] = [
       [/Jordan Avery|Casey Morgan|04\/12\/1961|00482913|\(555\) 201-7788|Riverside General Hospital/g, "PII"],
       [/type 2 diabetes mellitus|chronic kidney disease|community-acquired pneumonia|atrial fibrillation/gi, "DISEASE"],
+      // Sub-word fragments, as a real token classifier can return them.
+      [/men(?=ingeal)|l irritation/g, "DISEASE"],
       [/apixaban|ceftriaxone|azithromycin|metformin|empagliflozin/gi, "CHEM"],
     ];
     const find = (text: string, kind: "pii" | "ner") => {
@@ -77,6 +79,11 @@ test("note → de-identify → PubMed evidence, without leaking identifiers", as
   await expect(view.locator(".redacted")).toHaveCount(6);
 
   await expect(page.getByRole("checkbox", { name: /chronic kidney disease/i })).toBeChecked();
+  // Fragments are joined into one negated term that is not pre-selected.
+  const negated = page.getByRole("checkbox", { name: /meningeal irritation/i });
+  await expect(negated).not.toBeChecked();
+  await expect(page.locator(".chip.negated")).toContainText("negated");
+  await expect(view.locator("mark.negated")).toHaveText("meningeal irritation");
   const query = page.getByLabel("PubMed query");
   await expect(query).toHaveValue(/"chronic kidney disease"\[tiab\]/);
 

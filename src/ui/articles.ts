@@ -11,7 +11,13 @@ export function highlight(text: string, entities: Entity[], offset = 0): (Node |
     const end = e.end - offset;
     if (start < pos || end > text.length || start < 0) continue;
     out.push(text.slice(pos, start));
-    out.push(h("mark", { className: `ent cat-${e.category}`, title: e.label }, text.slice(start, end)));
+    out.push(
+      h(
+        "mark",
+        { className: `ent cat-${e.category}${e.negated ? " negated" : ""}`, title: e.negated ? `${e.label} (negated)` : e.label },
+        text.slice(start, end),
+      ),
+    );
     pos = end;
   }
   out.push(text.slice(pos));

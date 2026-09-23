@@ -29,6 +29,8 @@ History: 63-year-old with type 2 diabetes mellitus and chronic kidney disease st
 
 Hospital course: Treated with ceftriaxone and azithromycin, improved over 4 days. Metformin was held because of reduced eGFR and restarted at a lower dose. Started empagliflozin for renal protection.
 
+Exam: Alert and oriented, no signs of meningeal irritation.
+
 Plan: Follow up with nephrology in 2 weeks. Continue apixaban 5 mg twice daily.`;
 
 const SAMPLE_NOTE_RO = `SCRISOARE MEDICALĂ (exemplu sintetic)
@@ -303,7 +305,10 @@ export function noteTab(engine: Engine, getSettings: () => Settings): HTMLElemen
             ...groups.map((g) =>
               h(
                 "label",
-                { className: `chip cat-${g.category}` },
+                {
+                  className: `chip cat-${g.category}${g.negated ? " negated" : ""}`,
+                  title: g.negated ? "Negated in the note (e.g. \"no signs of…\"), so not selected by default" : null,
+                },
                 h("input", {
                   type: "checkbox",
                   checked: st.selected.has(g.key),
@@ -315,6 +320,7 @@ export function noteTab(engine: Engine, getSettings: () => Settings): HTMLElemen
                 }),
                 g.display,
                 g.count > 1 && h("span", { className: "count" }, `×${g.count}`),
+                g.negated && h("span", { className: "count" }, "negated"),
               ),
             ),
           ),
@@ -428,9 +434,11 @@ export function noteTab(engine: Engine, getSettings: () => Settings): HTMLElemen
 
 function defaultSelection(groups: TermGroup[]): Set<string> {
   // Pre-select up to two of the most mentioned conditions and drugs.
-  const pick = (cat: string) => groups.filter((g) => g.category === cat).slice(0, 2).map((g) => g.key);
+  // Negated findings ("no signs of X") are never pre-selected.
+  const affirmed = groups.filter((g) => !g.negated);
+  const pick = (cat: string) => affirmed.filter((g) => g.category === cat).slice(0, 2).map((g) => g.key);
   const sel = [...pick("condition"), ...pick("drug")];
-  if (!sel.length) sel.push(...groups.slice(0, 2).map((g) => g.key));
+  if (!sel.length) sel.push(...affirmed.slice(0, 2).map((g) => g.key));
   return new Set(sel);
 }
 
@@ -474,7 +482,7 @@ function renderNote(st: NoteState): (Node | string)[] {
       out.push(
         h(
           "mark",
-          { className: `ent cat-${e.category}${selectedTerms.has(key) ? " selected" : ""}`, title: `${e.label} ${e.score?.toFixed(2) ?? ""}` },
+          { className: `ent cat-${e.category}${selectedTerms.has(key) ? " selected" : ""}${e.negated ? " negated" : ""}`, title: `${e.label} ${e.score?.toFixed(2) ?? ""}` },
           st.text.slice(e.start, e.end),
         ),
       );

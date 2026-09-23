@@ -150,7 +150,7 @@ export function draftCard(text: string, pii: Span[], groups: TermGroup[], langua
     renderRows();
     // Detected terms are English for translated notes, so they are only
     // offered as shortcuts when the note itself is in English.
-    const conditions = language === "en" ? groups.filter((g) => g.category === "condition") : [];
+    const conditions = language === "en" ? groups.filter((g) => g.category === "condition" && !g.negated) : [];
     return h(
       "fieldset",
       { className: "field wide" },
