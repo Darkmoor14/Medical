@@ -67,7 +67,7 @@ This is a letter layout, not the official numbered CNAS forms (e.g. the printed 
 
 ## Signs and symptoms
 
-OpenMed's browser models recognise named diseases and drugs, not examination findings. A rule-based **Signs & symptoms** detector (`src/findings.ts`, on by default and switchable in Settings) marks findings such as:
+OpenMed's browser models recognise named diseases and drugs, not examination findings. A rule-based **Signs & symptoms** detector (`src/findings.ts`, on by default and switchable in Settings) covers 400+ signs, symptoms and lab-style findings across every body system, with UK and US spellings and Romanian equivalents in the glossary. Examples include:
 
 - underweight, pallor, jaundice, dehydration, hyperpigmented skin, reduced subcutaneous fat;
 - an enlarged liver ("liver 2 cm below the costal margin"), oedema, lymphadenopathy;
