@@ -284,9 +284,6 @@ footer {
 
 @media (max-width: 640px) {
   header.top { align-items: flex-start; }
-  .miner-form { grid-template-columns: 1fr 1fr; }
-  .miner-form input { grid-column: 1 / -1; }
-  .miner-form button { grid-column: 1 / -1; }
 }
 
 /* Search form */
@@ -359,3 +356,51 @@ details.translation code { display: block; margin-top: 4px; white-space: pre-wra
   .search-form input { grid-column: 1 / -1; }
   .search-form button { grid-column: 1 / -1; }
 }
+
+/* Paper cards: evidence, warnings, actions */
+.paper-head { display: flex; gap: 8px; align-items: flex-start; }
+.paper-head h3 { flex: 1; }
+.select-paper { margin-top: 4px; }
+.star { border: 0; background: none; font-size: 1.25rem; line-height: 1; padding: 2px 4px; color: var(--muted); }
+.star.on { color: #d97706; }
+.new-badge {
+  display: inline-block; margin-right: 6px; padding: 0 6px; border-radius: 999px;
+  background: var(--accent); color: var(--accent-ink); font-size: 0.72rem; vertical-align: middle;
+}
+.warning {
+  margin: 0 0 8px; padding: 6px 10px; border-radius: 6px; font-size: 0.85rem;
+  background: color-mix(in srgb, #d97706 15%, transparent); color: var(--text);
+}
+.warning.danger { background: var(--danger-soft); color: var(--danger); font-weight: 600; }
+.paper.retracted { border-color: var(--danger); }
+.paper.retracted h3 a { text-decoration: line-through; }
+.level {
+  --lv: var(--muted);
+  display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--lv) 45%, transparent);
+  background: color-mix(in srgb, var(--lv) 12%, transparent);
+  color: var(--text);
+}
+button.level { cursor: pointer; }
+button.level.active { background: color-mix(in srgb, var(--lv) 35%, transparent); font-weight: 600; }
+.level-1 { --lv: #15803d; }
+.level-2 { --lv: #0f766e; }
+.level-3 { --lv: #2563eb; }
+.level-4 { --lv: #4f46e5; }
+.level-5 { --lv: #7c3aed; }
+.level-6 { --lv: #64748b; }
+.level-7 { --lv: #b45309; }
+.level-8, .level-9 { --lv: #94a3b8; }
+.metric { background: var(--bg); color: var(--muted); }
+.paper-actions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.evidence-mix, .legend { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0 8px; }
+.legend-item { display: inline-flex; gap: 4px; align-items: center; font-size: 0.82rem; cursor: pointer; }
+.legend-item .dot { margin-right: 0; }
+.papers.hide-cat-condition mark.cat-condition { background: none; border-bottom-color: transparent; }
+.papers.hide-cat-finding mark.cat-finding { background: none; border-bottom-color: transparent; }
+.papers.hide-cat-drug mark.cat-drug { background: none; border-bottom-color: transparent; }
+.papers.hide-cat-gene mark.cat-gene { background: none; border-bottom-color: transparent; }
+.papers.hide-cat-anatomy mark.cat-anatomy { background: none; border-bottom-color: transparent; }
+.papers.hide-cat-organism mark.cat-organism { background: none; border-bottom-color: transparent; }
+.papers.hide-cat-cell mark.cat-cell { background: none; border-bottom-color: transparent; }
+.papers.hide-cat-other mark.cat-other { background: none; border-bottom-color: transparent; }

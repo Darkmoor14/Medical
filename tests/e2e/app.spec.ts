@@ -41,6 +41,9 @@ async function mockPubMed(page: Page, opts: { spelling?: string } = {}) {
     if (req.url().includes("espell")) {
       return xml(`<eSpellResult><CorrectedQuery>${opts.spelling ?? ""}</CorrectedQuery></eSpellResult>`);
     }
+    if (req.url().includes("elink")) {
+      return json({ linksets: [{ linksetdbs: [{ linkname: "pubmed_pubmed", links: ["111", "222"] }] }] });
+    }
     if (params.get("db") === "mesh") {
       if (req.url().includes("esearch")) return json({ esearchresult: { idlist: ["1", "2"] } });
       return json({ result: { "1": { ds_meshterms: ["Heart Failure"] }, "2": { ds_meshterms: ["Heart Failure, Diastolic"] } } });
@@ -51,6 +54,13 @@ async function mockPubMed(page: Page, opts: { spelling?: string } = {}) {
     }
     return xml(EFETCH_XML);
   });
+  await page.route("https://icite.od.nih.gov/**", (route) =>
+    route.fulfill({
+      contentType: "application/json",
+      headers: { "Access-Control-Allow-Origin": "*" },
+      body: JSON.stringify({ data: [{ pmid: 111, citation_count: 1200, relative_citation_ratio: 25.3 }, { pmid: 222, citation_count: 3 }] }),
+    }),
+  );
   return requests;
 }
 
@@ -173,6 +183,47 @@ test("a shared link reopens and reruns the search", async ({ page }) => {
   await expect(other.locator(".filter-chip")).toContainText("Randomized controlled trial");
   await expect(other.locator(".paper")).toHaveCount(2);
   expect(new URLSearchParams(otherRequests[0]).get("term")).toBe(new URLSearchParams(requests[0]).get("term"));
+});
+
+test("evidence badges, retraction warning, citations and ordering", async ({ page }) => {
+  await mockPubMed(page);
+  await page.goto("/");
+  await page.getByLabel("PubMed query").fill("ckd");
+  await page.getByRole("button", { name: "Search", exact: true }).click();
+  const first = page.locator(".paper").first();
+  await expect(first.locator(".level")).toHaveText("Randomized trial");
+  await expect(first).toContainText("1,200 citations · RCR 25.3");
+  const retracted = page.locator(".paper", { hasText: "Metformin and eGFR" });
+  await expect(retracted.locator(".warning.danger")).toContainText("Retracted");
+
+  await page.getByLabel("Order papers by").selectOption("newest");
+  await expect(page.locator(".paper h3").first()).toContainText("Empagliflozin");
+  await page.getByRole("button", { name: "Randomized trial 1" }).click();
+  await expect(page.locator(".paper")).toHaveCount(1);
+});
+
+test("similar articles open as a new list with a way back", async ({ page }) => {
+  await mockPubMed(page);
+  await page.goto("/");
+  await page.getByLabel("PubMed query").fill("ckd");
+  await page.getByRole("button", { name: "Search", exact: true }).click();
+  await page.locator(".paper").first().getByRole("button", { name: "Similar articles" }).click();
+  await expect(page.getByRole("heading", { name: /Similar to “Empagliflozin/ })).toBeVisible();
+  await expect(page.locator(".paper")).toHaveCount(1);
+  await page.getByRole("button", { name: "← Back to search results" }).click();
+  await expect(page.getByRole("heading", { name: "Papers (2)" })).toBeVisible();
+});
+
+test("highlight legend turns categories on and off", async ({ page }) => {
+  await mockPubMed(page);
+  await page.goto("/");
+  await page.getByLabel("PubMed query").fill("ckd");
+  await page.getByRole("button", { name: "Search", exact: true }).click();
+  const legend = page.getByRole("group", { name: "Highlight categories" });
+  await expect(legend).toBeVisible();
+  await legend.getByRole("checkbox", { name: /Drug/ }).uncheck();
+  await expect(page.locator(".papers")).toHaveClass(/hide-cat-drug/);
+  await page.screenshot({ path: "test-results/stage2.png", fullPage: true });
 });
 
 test("settings dialog saves choices", async ({ page }) => {

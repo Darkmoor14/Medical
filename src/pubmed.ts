@@ -105,7 +105,7 @@ export async function fetchArticles(
   }
   // efetch does not guarantee order; restore the search ranking.
   const rank = new Map(ids.map((id, i) => [id, i]));
-  return out.sort((a, b) => (rank.get(a.pmid) ?? 0) - (rank.get(b.pmid) ?? 0));
+  return out.filter((a) => rank.has(a.pmid)).sort((a, b) => rank.get(a.pmid)! - rank.get(b.pmid)!);
 }
 
 export function parseArticlesXml(xml: string): Article[] {

@@ -8,7 +8,19 @@ import { searchForm } from "./search-form";
 import { downloadText, termsCsv, termsPanel } from "./terms-panel";
 import type { Engine } from "../engine";
 import { tallyByDocument, toEntities, type Entity, type TermStat } from "../entities";
-import { fetchArticles, pubmedSearchUrl, searchPubMed, spellCheck, type Article } from "../pubmed";
+import {
+  citationMetrics,
+  fetchArticles,
+  linkedArticles,
+  pubmedSearchUrl,
+  searchPubMed,
+  spellCheck,
+  type Article,
+  type LinkKind,
+  type Metrics,
+} from "../pubmed";
+import { evidenceLevel, evidenceMix, orderArticles, type ResultOrder } from "../search/evidence";
+import { CATEGORY_LABEL, CATEGORY_ORDER, type Category } from "../models";
 import { buildFullQuery } from "../search/query";
 import { decodeState, encodeState, type SearchState } from "../search/url-state";
 import { nerModels, type Settings } from "../settings";
@@ -23,11 +35,17 @@ interface Results {
   entities: Map<string, Entity[]> | null;
   stats: TermStat[] | null;
   filter: TermStat | null;
+  metrics: Map<string, Metrics>;
+  evidence: string | null;
+  // Set when showing articles similar to / citing one paper.
+  linked: { kind: LinkKind; from: Article; previous: Results } | null;
 }
 
 export function searchPage(engine: Engine, getSettings: () => Settings): HTMLElement {
   let results: Results | null = null;
   let runId = 0;
+  let order: ResultOrder = "pubmed";
+  const hiddenCats = new Set<Category>();
 
   const status = h("p", { className: "status", role: "status" });
   const summary = h("div", { className: "summary" });
@@ -77,13 +95,72 @@ export function searchPage(engine: Engine, getSettings: () => Settings): HTMLEle
         entities: null,
         stats: null,
         filter: null,
+        metrics: new Map(),
+        evidence: null,
+        linked: null,
       };
       status.textContent = "";
       renderPapers();
+      void loadMetrics(id);
       void analyse(id);
     } catch (err) {
       if (!stale()) showError(status, err);
     }
+  }
+
+  async function loadMetrics(id: number) {
+    const r = results;
+    if (!r) return;
+    const metrics = await citationMetrics(r.articles.map((a) => a.pmid));
+    if (id !== runId || results !== r || !metrics.size) return;
+    r.metrics = metrics;
+    renderPapers();
+  }
+
+  // Similar articles / cited by: a new result set that can go back.
+  async function runLinked(from: Article, kind: LinkKind) {
+    const previous = results;
+    if (!previous) return;
+    const id = ++runId;
+    status.textContent = kind === "similar" ? "Finding similar articles…" : "Finding articles that cite this one…";
+    try {
+      const ids = await linkedArticles(from.pmid, kind, { apiKey: apiKey(), limit: previous.state.count });
+      if (id !== runId) return;
+      if (!ids.length) {
+        status.textContent =
+          kind === "similar" ? "PubMed lists no similar articles for this paper." : "No citing articles found in PubMed Central for this paper.";
+        return;
+      }
+      const articles = await fetchArticles(ids, { apiKey: apiKey() });
+      if (id !== runId) return;
+      results = {
+        ...previous,
+        total: ids.length,
+        articles,
+        entities: null,
+        stats: null,
+        filter: null,
+        metrics: new Map(),
+        evidence: null,
+        linked: { kind, from, previous: previous.linked ? previous.linked.previous : previous },
+      };
+      status.textContent = "";
+      renderPapers();
+      papersCard.scrollIntoView({ behavior: "smooth", block: "start" });
+      void loadMetrics(id);
+      void analyse(id);
+    } catch (err) {
+      if (id === runId) showError(status, err);
+    }
+  }
+
+  function backToSearch() {
+    const r = results;
+    if (!r?.linked) return;
+    runId++;
+    results = r.linked.previous;
+    renderTerms();
+    renderPapers();
   }
 
   // Term extraction runs after the papers are on screen.
@@ -230,18 +307,60 @@ export function searchPage(engine: Engine, getSettings: () => Settings): HTMLEle
   function renderPapers() {
     const r = results;
     if (!r) return;
-    const visible = r.filter ? r.articles.filter((a) => r.filter!.docs.has(a.pmid)) : r.articles;
+    let visible = r.filter ? r.articles.filter((a) => r.filter!.docs.has(a.pmid)) : r.articles;
+    if (r.evidence) visible = visible.filter((a) => evidenceLevel(a.pubTypes).key === r.evidence);
+    visible = orderArticles(visible, order, r.metrics);
+    const title = r.linked
+      ? `${r.linked.kind === "similar" ? "Similar to" : "Papers citing"} “${r.linked.from.title}”`
+      : r.filter
+        ? `Papers mentioning “${r.filter.term}”`
+        : "Papers";
+
+    const orderSelect = h(
+      "select",
+      {
+        "aria-label": "Order papers by",
+        onchange: (e: Event) => {
+          order = (e.target as HTMLSelectElement).value as ResultOrder;
+          renderPapers();
+        },
+      },
+      ...(
+        [
+          ["pubmed", "PubMed order"],
+          ["evidence", "Strongest evidence first"],
+          ["citations", "Most cited"],
+          ["newest", "Newest first"],
+        ] as const
+      ).map(([v, l]) => h("option", { value: v, selected: order === v, disabled: v === "citations" && !r.metrics.size }, l)),
+    );
+
+    const mix = evidenceMix(r.filter ? r.articles.filter((a) => r.filter!.docs.has(a.pmid)) : r.articles);
+    const presentCats = CATEGORY_ORDER.filter((c) => [...(r.entities?.values() ?? [])].some((list) => list.some((e) => e.category === c)));
+    const papersList = h(
+      "div",
+      { className: `papers ${[...hiddenCats].map((c) => `hide-cat-${c}`).join(" ")}` },
+      ...visible.map((a) =>
+        articleCard(a, r.entities?.get(a.pmid) ?? [], {
+          metrics: r.metrics.get(a.pmid),
+          onLinked: (art, kind) => void runLinked(art, kind),
+        }),
+      ),
+    );
+
     papersCard.hidden = false;
     replace(
       papersCard,
       h(
         "div",
         { className: "card-head" },
-        h("h2", {}, r.filter ? `Papers mentioning “${r.filter.term}” (${visible.length})` : `Papers (${r.articles.length})`),
-        r.filter &&
-          h(
-            "div",
-            { className: "actions" },
+        h("h2", {}, `${title} (${visible.length})`),
+        h(
+          "div",
+          { className: "actions" },
+          r.linked && h("button", { type: "button", onclick: backToSearch }, "← Back to search results"),
+          r.filter &&
+            !r.linked &&
             h(
               "button",
               {
@@ -255,6 +374,7 @@ export function searchPage(engine: Engine, getSettings: () => Settings): HTMLEle
               },
               "Narrow the search to this term",
             ),
+          r.filter &&
             h(
               "button",
               {
@@ -265,11 +385,56 @@ export function searchPage(engine: Engine, getSettings: () => Settings): HTMLEle
                   renderPapers();
                 },
               },
-              "Clear filter",
+              "Clear term filter",
+            ),
+          orderSelect,
+        ),
+      ),
+      mix.length > 1 &&
+        h(
+          "div",
+          { className: "evidence-mix", role: "group", "aria-label": "Filter by strength of evidence" },
+          h("span", { className: "muted small" }, "Evidence: "),
+          ...mix.map(({ level, count }) =>
+            h(
+              "button",
+              {
+                type: "button",
+                className: `level level-${level.rank}${r.evidence === level.key ? " active" : ""}`,
+                "aria-pressed": r.evidence === level.key ? "true" : "false",
+                onclick: () => {
+                  r.evidence = r.evidence === level.key ? null : level.key;
+                  renderPapers();
+                },
+              },
+              `${level.label} ${count}`,
             ),
           ),
-      ),
-      h("div", { className: "papers" }, ...visible.map((a) => articleCard(a, r.entities?.get(a.pmid) ?? []))),
+        ),
+      presentCats.length > 0 &&
+        h(
+          "div",
+          { className: "legend", role: "group", "aria-label": "Highlight categories" },
+          h("span", { className: "muted small" }, "Highlights: "),
+          ...presentCats.map((c) =>
+            h(
+              "label",
+              { className: `legend-item cat-${c}` },
+              h("input", {
+                type: "checkbox",
+                checked: !hiddenCats.has(c),
+                onchange: (e: Event) => {
+                  if ((e.target as HTMLInputElement).checked) hiddenCats.delete(c);
+                  else hiddenCats.add(c);
+                  papersList.classList.toggle(`hide-cat-${c}`, hiddenCats.has(c));
+                },
+              }),
+              h("span", { className: `dot cat-${c}` }),
+              CATEGORY_LABEL[c],
+            ),
+          ),
+        ),
+      papersList,
     );
   }
 
