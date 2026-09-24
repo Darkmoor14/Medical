@@ -2,7 +2,7 @@ import "./styles.css";
 import { $, replace } from "./ui/dom";
 import { Engine } from "./engine";
 import { engineSettings, loadSettings, type Settings } from "./settings";
-import { minerTab } from "./ui/miner-tab";
+import { searchPage } from "./ui/search-page";
 import { settingsDialog } from "./ui/settings-dialog";
 
 let settings = loadSettings();
@@ -16,4 +16,4 @@ const dialog = settingsDialog(engine, getSettings, (s: Settings) => (settings = 
 document.body.appendChild(dialog);
 $("#settings-btn").addEventListener("click", () => dialog.showModal());
 
-replace($("#panel"), minerTab(engine, getSettings));
+replace($("#panel"), searchPage(engine, getSettings));

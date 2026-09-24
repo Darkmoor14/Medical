@@ -6,11 +6,12 @@ export const EFETCH_XML = `<?xml version="1.0" ?>
       <PMID Version="1">111</PMID>
       <Article>
         <Journal>
-          <JournalIssue><PubDate><Year>2023</Year><Month>Jan</Month></PubDate></JournalIssue>
+          <JournalIssue><Volume>388</Volume><Issue>2</Issue><PubDate><Year>2023</Year><Month>Jan</Month></PubDate></JournalIssue>
           <Title>The New England journal of medicine</Title>
           <ISOAbbreviation>N Engl J Med</ISOAbbreviation>
         </Journal>
         <ArticleTitle>Empagliflozin in chronic kidney disease.</ArticleTitle>
+        <Pagination><MedlinePgn>117-127</MedlinePgn></Pagination>
         <Abstract>
           <AbstractText Label="BACKGROUND">SGLT2 inhibitors slow CKD.</AbstractText>
           <AbstractText Label="RESULTS">Fewer events with <i>empagliflozin</i>.</AbstractText>
@@ -24,6 +25,10 @@ export const EFETCH_XML = `<?xml version="1.0" ?>
           <PublicationType>Randomized Controlled Trial</PublicationType>
         </PublicationTypeList>
       </Article>
+      <MeshHeadingList>
+        <MeshHeading><DescriptorName>Renal Insufficiency, Chronic</DescriptorName></MeshHeading>
+        <MeshHeading><DescriptorName>Humans</DescriptorName></MeshHeading>
+      </MeshHeadingList>
     </MedlineCitation>
     <PubmedData>
       <ArticleIdList>
@@ -43,7 +48,11 @@ export const EFETCH_XML = `<?xml version="1.0" ?>
         </Journal>
         <ArticleTitle>Metformin and eGFR.</ArticleTitle>
         <AuthorList><Author><LastName>Smith</LastName><Initials>J</Initials></Author></AuthorList>
+        <PublicationTypeList><PublicationType>Journal Article</PublicationType></PublicationTypeList>
       </Article>
+      <CommentsCorrectionsList>
+        <CommentsCorrections RefType="RetractionIn"><PMID Version="1">999</PMID></CommentsCorrections>
+      </CommentsCorrectionsList>
     </MedlineCitation>
     <PubmedData><ArticleIdList><ArticleId IdType="pubmed">222</ArticleId></ArticleIdList></PubmedData>
   </PubmedArticle>
