@@ -4,7 +4,6 @@ import {
   isNegated,
   groupTerms,
   normalizeTerm,
-  removePiiOverlaps,
   tallyByDocument,
   toEntities,
 } from "../../src/entities";
@@ -49,16 +48,6 @@ describe("toEntities", () => {
     ]);
     expect(ents).toHaveLength(1);
     expect(ents[0].label).toBe("DISEASE");
-  });
-});
-
-describe("removePiiOverlaps", () => {
-  it("drops entities that touch identifier spans", () => {
-    const ents = [
-      { start: 0, end: 5 },
-      { start: 10, end: 20 },
-    ];
-    expect(removePiiOverlaps(ents, [{ start: 3, end: 8 }])).toEqual([{ start: 10, end: 20 }]);
   });
 });
 

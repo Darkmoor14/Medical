@@ -1,5 +1,5 @@
-// Rule-based detection of clinical signs and symptoms in English text (the
-// note itself or its on-device translation). The OpenMed browser models
+// Rule-based detection of clinical signs and symptoms in English text
+// (PubMed titles and abstracts). The OpenMed browser models
 // recognise named diseases and drugs, not findings such as "pale mucous
 // membranes" or "underweight", so these are matched from a curated list.
 // Negation ("no murmurs") is handled later by isNegated().

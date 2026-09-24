@@ -3,8 +3,6 @@
 // graphs at the repo root (the "onnx-android" layout that openmed's
 // `loadOnnxModel` understands).
 
-export const PII_MODEL = "OpenMed/OpenMed-PII-ClinicalE5-Small-33M-v1-onnx-android";
-
 export type ModelSize = "fast" | "accurate";
 
 export interface Detector {

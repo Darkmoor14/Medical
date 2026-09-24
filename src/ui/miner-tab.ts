@@ -6,6 +6,7 @@ import { tallyByDocument, toEntities, normalizeTerm, type Entity, type TermStat 
 import { CATEGORY_LABEL, CATEGORY_ORDER, type Category } from "../models";
 import { fetchArticles, searchPubMed, type Article, type Sort } from "../pubmed";
 import { nerModels, type Settings } from "../settings";
+import { findSignsAndSymptoms } from "../findings";
 
 interface MinerState {
   query: string;
@@ -98,7 +99,11 @@ export function minerTab(engine: Engine, getSettings: () => Settings): HTMLEleme
       );
       const textById = new Map(articles.map((a) => [a.pmid, articleText(a)]));
       const entities = new Map(
-        extracted.map((d) => [d.id, toEntities(textById.get(d.id) ?? "", d.spans)]),
+        extracted.map((d) => {
+          const text = textById.get(d.id) ?? "";
+          const findings = s.findings ? findSignsAndSymptoms(text) : [];
+          return [d.id, toEntities(text, [...d.spans, ...findings])];
+        }),
       );
       state = {
         query,

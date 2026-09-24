@@ -1,16 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { findSignsAndSymptoms } from "../../src/findings";
-import { applyGlossary } from "../../src/glossary";
 import { toEntities } from "../../src/entities";
 
-// The exam paragraph after the glossary step, as the translator would see it.
-const EXAM = applyGlossary(
-  "Stare nutritie subponderala. Tegumente hiperpigmentate, deshidratate; mucoase palide, usor deshidratate. " +
-    "Tesut conjuctiv-adipos slab reprezentat. Aparat respirator MV prezent bilateral, fara raluri. " +
-    "Zg cardiace ritmice bine batute, fara sufluri, fara edem. Abdomen suplu, elastic, nedureros la palpare superficiala sau profunda. " +
-    "Ficat la 2 cm sub rebordul costal drept si splina nepalpabila. Manvera Giordano negativa bilateral. " +
-    "Sistem nervos orientat temporospatial, fara semne de iritatie meningeana.",
-).text;
+// An English examination paragraph.
+const EXAM =
+  "Underweight nutritional status. Hyperpigmented skin, dehydrated; pale mucous membranes, mildly dehydrated. " +
+  "Reduced subcutaneous fat. Respiratory system: vesicular breath sounds present bilaterally, no rales. " +
+  "Regular heart sounds, no murmurs, no oedema. Soft abdomen, non-tender on palpation. " +
+  "Liver 2 cm below the right costal margin and spleen non-palpable. No costovertebral angle tenderness. " +
+  "Nervous system: oriented, no signs of meningeal irritation.";
 
 describe("findSignsAndSymptoms", () => {
   it("finds the abnormal findings and marks normal ones as negated", () => {
@@ -27,7 +25,7 @@ describe("findSignsAndSymptoms", () => {
         "reduced subcutaneous fat",
       ]),
     );
-    expect(found).toContain("liver la 2 cm below the right costal margin");
+    expect(found).toContain("liver 2 cm below the right costal margin");
     expect(negated).toEqual(["rales", "murmurs", "oedema", "costovertebral angle tenderness", "meningeal irritation"]);
     // "non-tender" and a negative Giordano sign are not findings.
     expect(found.some((t) => t.includes("tender"))).toBe(false);
@@ -54,8 +52,8 @@ describe("expanded findings list", () => {
     ].filter((t) => t !== "left hemiparesis").concat(["hemiparesis"]).sort((a, b) => text.toLowerCase().indexOf(a) - text.toLowerCase().indexOf(b)));
   });
 
-  it("finds findings in a translated Romanian history", () => {
-    const text = applyGlossary("Pacienta acuză cefalee, amețeli, dispnee de efort, palpitații și edeme gambiere. Fără febră.").text;
+  it("finds findings in an abstract and respects negation", () => {
+    const text = "Patients presented with headache, dizziness, dyspnoea, palpitations and leg oedema, without fever.";
     const ents = toEntities(text, findSignsAndSymptoms(text));
     expect(ents.filter((e) => !e.negated).map((e) => e.text.toLowerCase())).toEqual([
       "headache", "dizziness", "dyspnoea", "palpitations", "leg oedema",

@@ -30,11 +30,8 @@
   },
   "dependencies": {
     "@huggingface/transformers": "^4.3.0",
-    "docx": "^9.7.1",
-    "mammoth": "^1.12.3",
     "onnxruntime-web": "^1.30.0",
-    "openmed": "^2.5.0",
-    "pdfjs-dist": "^6.3.289"
+    "openmed": "^2.5.0"
   },
   "private": true,
   "type": "module"

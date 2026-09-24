@@ -4,7 +4,6 @@ import type { Engine } from "../engine";
 import { DETECTORS, detectorModelId } from "../models";
 import {
   allModels,
-  DEFAULT_TRANSLATION_MODEL,
   engineSettings,
   saveSettings,
   type Settings,
@@ -110,7 +109,7 @@ export function settingsDialog(
           h(
             "label",
             { className: "range" },
-            "Minimum score for clinical terms ",
+            "Minimum score for detected terms ",
             h("input", {
               type: "range",
               min: 0,
@@ -124,24 +123,6 @@ export function settingsDialog(
             }),
             h("output", {}, s.threshold.toFixed(2)),
           ),
-          h(
-            "label",
-            { className: "range" },
-            "Minimum score for identifiers ",
-            h("input", {
-              type: "range",
-              min: 0,
-              max: 0.95,
-              step: 0.05,
-              value: s.piiThreshold,
-              oninput: (e: Event) => {
-                s.piiThreshold = Number((e.target as HTMLInputElement).value);
-                (e.target as HTMLInputElement).nextElementSibling!.textContent = s.piiThreshold.toFixed(2);
-              },
-            }),
-            h("output", {}, s.piiThreshold.toFixed(2)),
-          ),
-          h("p", { className: "muted small" }, "Keep the identifier threshold low. Removing too much is safer than leaving an identifier in."),
         ),
         h(
           "fieldset",
@@ -166,45 +147,6 @@ export function settingsDialog(
           h("legend", {}, "Compute"),
           radio("device", "wasm", "CPU (WebAssembly)", "Works everywhere."),
           radio("device", "webgpu", "GPU (WebGPU)", "Faster in recent Chrome and Edge."),
-        ),
-        h(
-          "fieldset",
-          {},
-          h("legend", {}, "Romanian notes"),
-          h(
-            "label",
-            { className: "text" },
-            "Translation model (Romanian → English) ",
-            h("input", {
-              type: "text",
-              value: s.translationModel,
-              spellcheck: false,
-              oninput: (e: Event) =>
-                (s.translationModel = (e.target as HTMLInputElement).value.trim() || DEFAULT_TRANSLATION_MODEL),
-            }),
-          ),
-          h(
-            "p",
-            { className: "muted small" },
-            "Romanian notes are de-identified, translated on this device, and then analysed by the English clinical models. The default model is a one-time download of several hundred MB.",
-          ),
-          h(
-            "label",
-            { className: "text" },
-            "Your medical glossary (one per line: romanian = english) ",
-            h("textarea", {
-              rows: 4,
-              spellcheck: false,
-              placeholder: "nepalpabil = non-palpable\nsuflu sistolic = systolic murmur",
-              value: s.userGlossary,
-              oninput: (e: Event) => (s.userGlossary = (e.target as HTMLTextAreaElement).value),
-            }),
-          ),
-          h(
-            "p",
-            { className: "muted small" },
-            "Terms are replaced with the English before translation, and your entries take priority over the built-in list of about 100 clinical terms and abbreviations.",
-          ),
         ),
         h(
           "fieldset",

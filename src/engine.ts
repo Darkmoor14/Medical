@@ -3,7 +3,6 @@
 import type { Span } from "./entities";
 import type {
   EngineSettings,
-  NoteAnalysis,
   ProgressEvent,
   WorkerRequest,
   WorkerResponse,
@@ -53,20 +52,6 @@ export class Engine {
 
   preload(models: string[], onProgress?: (p: ProgressEvent) => void) {
     return this.call<null>({ type: "preload", models }, onProgress);
-  }
-
-  analyzeNote(
-    args: { text: string; piiModel: string; piiThreshold: number; nerModels: string[]; threshold: number },
-    onProgress?: (p: ProgressEvent) => void,
-  ) {
-    return this.call<NoteAnalysis>({ type: "analyzeNote", ...args }, onProgress);
-  }
-
-  translate(
-    args: { segments: string[]; model: string; srcLang: string; tgtLang: string },
-    onProgress?: (p: ProgressEvent) => void,
-  ) {
-    return this.call<string[]>({ type: "translate", ...args }, onProgress);
   }
 
   extractMany(

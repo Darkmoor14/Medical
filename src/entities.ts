@@ -149,15 +149,6 @@ export function dedupeOverlapping(entities: Entity[]): Entity[] {
   return kept.sort((a, b) => a.start - b.start);
 }
 
-// Drop clinical entities that overlap anything the PII model flagged, so an
-// identifier can never end up as a search term.
-export function removePiiOverlaps<T extends { start: number; end: number }>(
-  entities: T[],
-  pii: { start: number; end: number }[],
-): T[] {
-  return entities.filter((e) => !pii.some((p) => overlaps(e, p)));
-}
-
 export function normalizeTerm(term: string): string {
   return term
     .toLowerCase()

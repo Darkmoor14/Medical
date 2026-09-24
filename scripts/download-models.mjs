@@ -2,10 +2,9 @@
 // Download OpenMed models into public/models/ so the app can run fully
 // offline (Settings → "Where models load from" → Local folder).
 //
-//   npm run download-models                       # PII + disease + drug, fast size
+//   npm run download-models                       # disease + drug detectors, fast size
 //   npm run download-models -- --size accurate --detectors disease,drug,gene
 //   npm run download-models -- --fp16             # also fetch fp16 graphs for WebGPU
-//   npm run download-models -- --translation      # also fetch the Romanian → English model
 
 import { mkdir, writeFile, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
@@ -19,7 +18,6 @@ const FAMILIES = {
   species: "SpeciesDetect",
 };
 const SIZES = { fast: "ElectraMed-33M-v1", accurate: "PubMed-v2-109M" };
-const PII_MODEL = "OpenMed/OpenMed-PII-ClinicalE5-Small-33M-v1-onnx-android";
 
 const args = process.argv.slice(2);
 const opt = (name, fallback) => {
@@ -30,33 +28,25 @@ const size = opt("size", "fast");
 const detectors = opt("detectors", "disease,drug").split(",").filter(Boolean);
 const withFp16 = args.includes("--fp16");
 const outDir = opt("out", "public/models");
-const withTranslation = args.includes("--translation");
-const TRANSLATION_MODEL = opt("translation-model", "Xenova/nllb-200-distilled-600M");
 
 if (!SIZES[size]) throw new Error(`--size must be one of ${Object.keys(SIZES).join(", ")}`);
 for (const d of detectors) {
   if (!FAMILIES[d]) throw new Error(`Unknown detector "${d}". Options: ${Object.keys(FAMILIES).join(", ")}`);
 }
 
-const models = [
-  PII_MODEL,
-  ...detectors.map((d) => `OpenMed/OpenMed-NER-${FAMILIES[d]}-${SIZES[size]}-onnx-android`),
-];
+const models = detectors.map((d) => `OpenMed/OpenMed-NER-${FAMILIES[d]}-${SIZES[size]}-onnx-android`);
 
-if (withTranslation) models.push(TRANSLATION_MODEL);
-
-const wanted = (id, file) =>
+const wanted = (file) =>
   (file.endsWith(".json") && !file.includes("/")) ||
-  (id === TRANSLATION_MODEL
-    ? /^onnx\/(encoder_model|decoder_model_merged)_quantized\.onnx$/.test(file)
-    : file === "model_int8.onnx" || (withFp16 && file === "model_fp16.onnx"));
+  file === "model_int8.onnx" ||
+  (withFp16 && file === "model_fp16.onnx");
 
 const headers = process.env.HF_TOKEN ? { Authorization: `Bearer ${process.env.HF_TOKEN}` } : {};
 
 for (const id of models) {
   const info = await fetch(`https://huggingface.co/api/models/${id}`, { headers });
   if (!info.ok) throw new Error(`${id}: ${info.status} ${info.statusText}`);
-  const files = (await info.json()).siblings.map((s) => s.rfilename).filter((f) => wanted(id, f));
+  const files = (await info.json()).siblings.map((s) => s.rfilename).filter(wanted);
   console.log(`\n${id}`);
   for (const file of files) {
     const dest = join(outDir, id, file);
