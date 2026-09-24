@@ -262,3 +262,26 @@ export async function citationMetrics(
   }
   return out;
 }
+
+// Number of PubMed records per publication year for a query (one esearch
+// count request per year; rate-limited like every other call).
+export async function countsByYear(
+  query: string,
+  fromYear: number,
+  toYear: number,
+  opts: { apiKey?: string | null; fetchImpl?: typeof fetch; onProgress?: (done: number, total: number) => void } = {},
+): Promise<{ year: number; count: number }[]> {
+  const out: { year: number; count: number }[] = [];
+  const total = toYear - fromYear + 1;
+  for (let y = fromYear; y <= toYear; y++) {
+    const res = await eutils(
+      "esearch.fcgi",
+      { db: "pubmed", term: `(${query}) AND ${y}[dp]`, rettype: "count", retmode: "json" },
+      opts.apiKey ?? null,
+      opts.fetchImpl,
+    );
+    out.push({ year: y, count: Number((await res.json()).esearchresult?.count ?? 0) });
+    opts.onProgress?.(out.length, total);
+  }
+  return out;
+}

@@ -404,3 +404,34 @@ button.level.active { background: color-mix(in srgb, var(--lv) 35%, transparent)
 .papers.hide-cat-organism mark.cat-organism { background: none; border-bottom-color: transparent; }
 .papers.hide-cat-cell mark.cat-cell { background: none; border-bottom-color: transparent; }
 .papers.hide-cat-other mark.cat-other { background: none; border-bottom-color: transparent; }
+
+/* Charts */
+.trends-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 24px; align-items: start; }
+.chart-figure { margin: 0; min-width: 0; }
+.chart-figure figcaption { font-weight: 600; font-size: 0.92rem; margin-bottom: 6px; }
+.chart-wrap { position: relative; }
+svg.chart { width: 100%; height: auto; display: block; overflow: visible; }
+svg.chart .grid { stroke: var(--border); stroke-width: 1; }
+svg.chart .axis { stroke: var(--muted); stroke-width: 1; }
+svg.chart .tick { fill: var(--muted); font-size: 11px; font-family: inherit; }
+svg.chart .bar { fill: var(--accent); }
+svg.chart .col.hover .bar, svg.chart .col:focus .bar { fill: color-mix(in srgb, var(--accent) 75%, var(--text)); }
+svg.chart .hit { fill: transparent; cursor: default; }
+svg.chart .col:focus { outline: none; }
+.chart-tooltip {
+  position: absolute; transform: translate(-50%, calc(-100% - 8px)); pointer-events: none;
+  background: var(--text); color: var(--bg); font-size: 0.8rem; padding: 3px 8px; border-radius: 6px; white-space: nowrap;
+}
+.bar-row.static { cursor: default; }
+.bar-row.static:hover { background: none; }
+.bar-fill.accent { background: var(--accent); }
+.table-view { margin-top: 6px; font-size: 0.85rem; }
+.table-view summary { cursor: pointer; color: var(--accent); }
+.table-view table { border-collapse: collapse; margin-top: 6px; }
+.table-view th, .table-view td { border-bottom: 1px solid var(--border); padding: 2px 10px 2px 0; text-align: left; }
+.table-view td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.together { margin-top: 16px; }
+.together h3 { font-size: 0.92rem; }
+.together .bar-label .dot { margin-right: 6px; }
+@media (max-width: 760px) { .trends-grid { grid-template-columns: 1fr; } }

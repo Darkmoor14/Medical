@@ -196,13 +196,18 @@ export interface TermStat {
 }
 
 // Document frequency of each term across a set of papers.
-export function tallyByDocument(docs: { id: string; entities: Entity[] }[]): TermStat[] {
+// `canonical` maps a term to the key it is counted under, so synonyms such
+// as "CKD" and "chronic kidney disease" can be merged.
+export function tallyByDocument(
+  docs: { id: string; entities: Entity[] }[],
+  canonical: (term: string) => string = normalizeTerm,
+): TermStat[] {
   const map = new Map<string, TermStat>();
   const displayCounts = new Map<string, Map<string, number>>();
   for (const doc of docs) {
     for (const e of doc.entities) {
       if (e.negated) continue;
-      const norm = normalizeTerm(e.text);
+      const norm = canonical(e.text);
       if (norm.length < 2) continue;
       const key = `${e.category}:${norm}`;
       let stat = map.get(key);
@@ -220,7 +225,9 @@ export function tallyByDocument(docs: { id: string; entities: Entity[] }[]): Ter
   // Show the most common surface form of each term.
   for (const [key, stat] of map) {
     const dc = displayCounts.get(key)!;
-    stat.term = [...dc.entries()].sort((a, b) => b[1] - a[1])[0][0];
+    // Prefer a written-out form over an abbreviation, then the commonest.
+    const isAbbrev = (t: string) => /^[A-Z0-9-]{2,10}s?$/.test(t);
+    stat.term = [...dc.entries()].sort((a, b) => Number(isAbbrev(a[0])) - Number(isAbbrev(b[0])) || b[1] - a[1])[0][0];
   }
   return [...map.values()].sort((a, b) => b.docs.size - a.docs.size || b.mentions - a.mentions);
 }

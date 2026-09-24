@@ -226,6 +226,31 @@ test("highlight legend turns categories on and off", async ({ page }) => {
   await page.screenshot({ path: "test-results/stage2.png", fullPage: true });
 });
 
+test("trends, merged synonyms and terms mentioned together", async ({ page }) => {
+  await mockPubMed(page);
+  await page.goto("/");
+  await page.getByLabel("PubMed query").fill("ckd");
+  await page.getByRole("button", { name: "Search", exact: true }).click();
+  // "chronic kidney disease" and "CKD" (defined in the abstract as SGLT2… CKD) count as one term.
+  await expect(page.getByRole("button", { name: /Empagliflozin/i }).first()).toBeVisible();
+  const conditions = page.locator(".term-col", { hasText: "Condition" });
+  await expect(conditions.locator(".bar-row")).toHaveCount(1);
+  await expect(conditions.locator(".bar-row")).toContainText("chronic kidney disease");
+  await expect(conditions.locator(".bar-value")).toHaveText("1");
+  const trends = page.locator("section", { has: page.getByRole("heading", { name: "Trends" }) });
+  await expect(trends.getByText("Papers per year (the 2 shown)")).toBeVisible();
+  await expect(trends.getByText("Top journals among the papers shown")).toBeVisible();
+  await trends.getByText("Show as table").first().click();
+  await expect(trends.locator("table").first()).toContainText("2023");
+
+  await page.getByRole("button", { name: /Empagliflozin/i }).first().click();
+  await expect(page.getByText(/Often mentioned together with/)).toBeVisible();
+
+  await trends.getByRole("button", { name: /Show the trend for all 1,234 results/ }).click();
+  await expect(trends.getByText(/All 1,234 PubMed results per year/)).toBeVisible({ timeout: 25_000 });
+  await page.screenshot({ path: "test-results/stage3.png", fullPage: true });
+});
+
 test("settings dialog saves choices", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Settings" }).click();

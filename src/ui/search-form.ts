@@ -18,7 +18,7 @@ import {
 import type { SearchState } from "../search/url-state";
 import { meshSuggestions, type Sort } from "../pubmed";
 
-export const PAPER_COUNTS = [20, 50, 100, 200];
+export const PAPER_COUNTS = [20, 50, 100, 200, 500, 1000];
 
 export interface SearchForm {
   element: HTMLElement;
@@ -42,8 +42,10 @@ export function searchForm(opts: {
   const countSelect = h(
     "select",
     { "aria-label": "Number of papers" },
-    ...PAPER_COUNTS.map((n) => h("option", { value: n, selected: n === 50 }, `${n} papers`)),
+    ...PAPER_COUNTS.map((n) => h("option", { value: n, selected: n === 50 }, `${n.toLocaleString()} papers`)),
   );
+  const countHint = h("p", { className: "muted small", hidden: true }, "Analysing more than 200 papers on this device can take several minutes. Papers appear first; the term chart follows.");
+  countSelect.addEventListener("change", () => (countHint.hidden = Number(countSelect.value) <= 200));
   const sortSelect = h(
     "select",
     { "aria-label": "Sort order" },
@@ -412,6 +414,7 @@ export function searchForm(opts: {
     queryInput.value = st.query;
     if (!PAPER_COUNTS.includes(st.count)) countSelect.append(h("option", { value: st.count }, `${st.count} papers`));
     countSelect.value = String(st.count);
+    countHint.hidden = st.count <= 200;
     sortSelect.value = st.sort;
     filters = structuredClone(st.filters);
     renderFilters();
@@ -441,6 +444,7 @@ export function searchForm(opts: {
       sortSelect,
       submitBtn,
     ),
+    countHint,
     suggestions,
     translationNote,
     chips,

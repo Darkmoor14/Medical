@@ -25,6 +25,9 @@ import { buildFullQuery } from "../search/query";
 import { decodeState, encodeState, type SearchState } from "../search/url-state";
 import { nerModels, type Settings } from "../settings";
 import { findSignsAndSymptoms } from "../findings";
+import { cooccurring } from "../search/trends";
+import { trendsCard } from "./trends-card";
+import { abbreviationMap, canonicalizer } from "../search/synonyms";
 
 interface Results {
   state: SearchState;
@@ -51,6 +54,7 @@ export function searchPage(engine: Engine, getSettings: () => Settings): HTMLEle
   const summary = h("div", { className: "summary" });
   const termsCard = h("section", { className: "card", hidden: true });
   const papersCard = h("section", { className: "card", hidden: true });
+  const trendsSlot = h("div", {});
   const apiKey = () => getSettings().apiKey || null;
 
   const form = searchForm({ onSubmit: (st) => void run(st), apiKey });
@@ -65,6 +69,7 @@ export function searchPage(engine: Engine, getSettings: () => Settings): HTMLEle
     }
     const fullQuery = buildFullQuery(st.query, st.filters);
     results = null;
+    replace(trendsSlot);
     termsCard.hidden = true;
     papersCard.hidden = true;
     replace(summary);
@@ -101,6 +106,7 @@ export function searchPage(engine: Engine, getSettings: () => Settings): HTMLEle
       };
       status.textContent = "";
       renderPapers();
+      renderTrends();
       void loadMetrics(id);
       void analyse(id);
     } catch (err) {
@@ -146,6 +152,7 @@ export function searchPage(engine: Engine, getSettings: () => Settings): HTMLEle
       };
       status.textContent = "";
       renderPapers();
+      renderTrends();
       papersCard.scrollIntoView({ behavior: "smooth", block: "start" });
       void loadMetrics(id);
       void analyse(id);
@@ -161,6 +168,7 @@ export function searchPage(engine: Engine, getSettings: () => Settings): HTMLEle
     results = r.linked.previous;
     renderTerms();
     renderPapers();
+    renderTrends();
   }
 
   // Term extraction runs after the papers are on screen.
@@ -196,7 +204,10 @@ export function searchPage(engine: Engine, getSettings: () => Settings): HTMLEle
           return [d.id, toEntities(text, [...d.spans, ...findings])];
         }),
       );
-      r.stats = tallyByDocument([...r.entities].map(([pmid, entities]) => ({ id: pmid, entities })));
+      r.stats = tallyByDocument(
+        [...r.entities].map(([pmid, entities]) => ({ id: pmid, entities })),
+        canonicalizer(abbreviationMap([...texts.values()])),
+      );
       renderTerms();
       renderPapers();
     } catch (err) {
@@ -270,6 +281,58 @@ export function searchPage(engine: Engine, getSettings: () => Settings): HTMLEle
     );
   }
 
+  // Terms that appear in the same papers as the selected one.
+  function togetherList(r: Results): HTMLElement | false {
+    const pairs = cooccurring(r.stats!, r.filter!);
+    if (!pairs.length) return false;
+    const n = r.filter!.docs.size;
+    return h(
+      "div",
+      { className: "together" },
+      h("h3", {}, `Often mentioned together with “${r.filter!.term}”`),
+      h(
+        "ol",
+        { className: "bars" },
+        ...pairs.map(({ stat, shared }) =>
+          h(
+            "li",
+            {},
+            h(
+              "button",
+              {
+                type: "button",
+                className: "bar-row",
+                title: `In ${shared} of the ${n} papers mentioning “${r.filter!.term}”`,
+                onclick: () => {
+                  r.filter = stat;
+                  renderTerms();
+                  renderPapers();
+                },
+              },
+              h("span", { className: "bar-label" }, h("span", { className: `dot cat-${stat.category}` }), stat.term),
+              h("span", { className: "bar-track" }, h("span", { className: `bar-fill cat-${stat.category}`, style: `width:${((shared / n) * 100).toFixed(1)}%` })),
+              h("span", { className: "bar-value" }, `${shared}/${n}`),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  function renderTrends() {
+    const r = results;
+    if (!r) return;
+    replace(
+      trendsSlot,
+      trendsCard({
+        articles: r.articles,
+        fullQuery: r.linked ? null : r.fullQuery,
+        total: r.total,
+        apiKey,
+      }),
+    );
+  }
+
   function renderTerms() {
     const r = results;
     if (!r?.stats) return;
@@ -301,6 +364,7 @@ export function searchPage(engine: Engine, getSettings: () => Settings): HTMLEle
           renderPapers();
         },
       }),
+      r.filter && togetherList(r),
     );
   }
 
@@ -451,6 +515,7 @@ export function searchPage(engine: Engine, getSettings: () => Settings): HTMLEle
     form.element,
     h("div", {}, status, summary),
     termsCard,
+    trendsSlot,
     papersCard,
   );
 }
