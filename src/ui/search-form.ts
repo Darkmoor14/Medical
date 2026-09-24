@@ -17,6 +17,7 @@ import {
 } from "../search/query";
 import type { SearchState } from "../search/url-state";
 import { meshSuggestions, type Sort } from "../pubmed";
+import { clearHistory, searchHistory } from "../search/store";
 
 export const PAPER_COUNTS = [20, 50, 100, 200, 500, 1000];
 
@@ -393,6 +394,61 @@ export function searchForm(opts: {
   const filterDetails = h("details", { className: "panel" }, filterToggle, filterPanel);
   const picoDetails = h("details", { className: "panel" }, h("summary", {}, "Clinical question (PICO)"), picoPanel);
 
+  // --- Recent searches ----------------------------------------------------
+  const historyList = h("div", { className: "history" });
+  const renderHistory = () => {
+    const entries = searchHistory();
+    replace(
+      historyList,
+      entries.length
+        ? h(
+            "ol",
+            {},
+            ...entries.map((e) =>
+              h(
+                "li",
+                {},
+                h(
+                  "button",
+                  {
+                    type: "button",
+                    className: "link",
+                    title: "Run this search again; new papers since then are marked",
+                    onclick: () => {
+                      setState(e.state);
+                      historyDetails.open = false;
+                      opts.onSubmit(e.state);
+                    },
+                  },
+                  e.state.query,
+                ),
+                h(
+                  "span",
+                  { className: "muted small" },
+                  ` · ${activeFilters(e.state.filters).map((f) => f.label).join(", ") || "no filters"} · ${e.total.toLocaleString()} results · ${new Date(e.date).toLocaleDateString()}`,
+                ),
+              ),
+            ),
+          )
+        : h("p", { className: "muted small" }, "Searches you run are listed here (saved in this browser only)."),
+      entries.length > 0 &&
+        h(
+          "button",
+          {
+            type: "button",
+            className: "link",
+            onclick: () => {
+              clearHistory();
+              renderHistory();
+            },
+          },
+          "Clear history",
+        ),
+    );
+  };
+  const historyDetails = h("details", { className: "panel" }, h("summary", {}, "Recent searches"), historyList);
+  historyDetails.addEventListener("toggle", () => historyDetails.open && renderHistory());
+
   const submit = () => {
     const q = queryInput.value.trim();
     if (!q) {
@@ -448,7 +504,7 @@ export function searchForm(opts: {
     suggestions,
     translationNote,
     chips,
-    h("div", { className: "panels" }, filterDetails, picoDetails),
+    h("div", { className: "panels" }, filterDetails, picoDetails, historyDetails),
   );
 
   return { element, getState, setState };

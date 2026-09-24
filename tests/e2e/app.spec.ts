@@ -251,6 +251,72 @@ test("trends, merged synonyms and terms mentioned together", async ({ page }) =>
   await page.screenshot({ path: "test-results/stage3.png", fullPage: true });
 });
 
+test("reading list with notes survives a reload", async ({ page }) => {
+  await mockPubMed(page);
+  await page.goto("/");
+  await page.getByLabel("PubMed query").fill("ckd");
+  await page.getByRole("button", { name: "Search", exact: true }).click();
+  await page.locator(".paper").first().getByRole("button", { name: "Add to reading list" }).click();
+  await expect(page.locator("#reading-btn")).toHaveText("★ Reading list (1)");
+  await page.locator("#reading-btn").click();
+  const dialog = page.getByRole("dialog", { name: /Reading list/ });
+  await expect(dialog).toContainText("Empagliflozin in chronic kidney disease");
+  await dialog.getByPlaceholder("e.g. relevant for the discussion section").fill("key trial");
+  await page.reload();
+  await page.locator("#reading-btn").click();
+  await expect(page.getByRole("dialog", { name: /Reading list/ }).locator("textarea")).toHaveValue("key trial");
+});
+
+test("exports selected papers and copies references", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await mockPubMed(page);
+  await page.goto("/");
+  await page.getByLabel("PubMed query").fill("ckd");
+  await page.getByRole("button", { name: "Search", exact: true }).click();
+  await page.getByRole("checkbox", { name: /Select “Empagliflozin/ }).check();
+  await expect(page.getByText("1 selected: export or copy them")).toBeVisible();
+
+  const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "RIS" }).first().click()]);
+  expect(download.suggestedFilename()).toBe("pubmed-papers.ris");
+  const fs = await import("node:fs/promises");
+  const ris = await fs.readFile(await download.path(), "utf8");
+  expect(ris.match(/TY {2}- JOUR/g)).toHaveLength(1);
+  expect(ris).toContain("PMID:111");
+
+  await page.getByRole("button", { name: "Copy Vancouver" }).first().click();
+  await expect(page.getByText("Copied 1 reference (Vancouver).")).toBeVisible();
+  const clip = await page.evaluate(() => navigator.clipboard.readText());
+  expect(clip).toMatch(/^1\. Herrington WG, EMPA-KIDNEY Group\./);
+});
+
+test("search history marks new papers since the last run", async ({ page }) => {
+  await mockPubMed(page);
+  await page.addInitScript(() => {
+    // A previous run of the same search that only found PMID 222.
+    if (!localStorage.getItem("opm-search-history-v1")) {
+      localStorage.setItem(
+        "opm-search-history-v1",
+        JSON.stringify([
+          {
+            key: "#q=ckd&n=0&s=relevance",
+            state: { query: "ckd", count: 50, sort: "relevance", filters: {} },
+            date: "2026-01-15T10:00:00.000Z",
+            total: 1,
+            pmids: ["222"],
+          },
+        ]),
+      );
+    }
+  });
+  await page.goto("/");
+  await page.getByText("Recent searches").click();
+  await page.locator(".history").getByRole("button", { name: "ckd" }).click();
+  await expect(page.getByText(/1 new paper since you last ran this search/)).toBeVisible();
+  await expect(page.locator(".paper", { hasText: "Empagliflozin" }).locator(".new-badge")).toHaveText("New");
+  await expect(page.locator(".paper", { hasText: "Metformin" }).locator(".new-badge")).toHaveCount(0);
+  await page.screenshot({ path: "test-results/stage4.png", fullPage: true });
+});
+
 test("settings dialog saves choices", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Settings" }).click();

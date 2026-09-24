@@ -27,6 +27,8 @@ import { nerModels, type Settings } from "../settings";
 import { findSignsAndSymptoms } from "../findings";
 import { cooccurring } from "../search/trends";
 import { trendsCard } from "./trends-card";
+import { exportMenu } from "./export-menu";
+import { isSaved, onReadingListChange, recordSearch, toggleSaved } from "../search/store";
 import { abbreviationMap, canonicalizer } from "../search/synonyms";
 
 interface Results {
@@ -42,6 +44,9 @@ interface Results {
   evidence: string | null;
   // Set when showing articles similar to / citing one paper.
   linked: { kind: LinkKind; from: Article; previous: Results } | null;
+  // PMIDs not in the previous run of the same search.
+  newPmids: Set<string>;
+  previousDate: string | null;
 }
 
 export function searchPage(engine: Engine, getSettings: () => Settings): HTMLElement {
@@ -49,6 +54,8 @@ export function searchPage(engine: Engine, getSettings: () => Settings): HTMLEle
   let runId = 0;
   let order: ResultOrder = "pubmed";
   const hiddenCats = new Set<Category>();
+  const selected = new Set<string>();
+  onReadingListChange(() => renderPapers());
 
   const status = h("p", { className: "status", role: "status" });
   const summary = h("div", { className: "summary" });
@@ -91,6 +98,18 @@ export function searchPage(engine: Engine, getSettings: () => Settings): HTMLEle
       status.textContent = `Fetching ${found.ids.length} papers…`;
       const articles = await fetchArticles(found.ids, { apiKey: apiKey() });
       if (stale()) return;
+      const previous = recordSearch(st, found.count, found.ids);
+      const newPmids = previous ? new Set(found.ids.filter((pmid) => !previous.pmids.includes(pmid))) : new Set<string>();
+      selected.clear();
+      if (previous && newPmids.size) {
+        summary.append(
+          h(
+            "p",
+            { className: "notice" },
+            `${newPmids.size} new paper${newPmids.size === 1 ? "" : "s"} since you last ran this search on ${new Date(previous.date).toLocaleDateString()}, marked “New”.`,
+          ),
+        );
+      }
       results = {
         state: st,
         fullQuery,
@@ -103,6 +122,8 @@ export function searchPage(engine: Engine, getSettings: () => Settings): HTMLEle
         metrics: new Map(),
         evidence: null,
         linked: null,
+        newPmids,
+        previousDate: previous?.date ?? null,
       };
       status.textContent = "";
       renderPapers();
@@ -149,6 +170,8 @@ export function searchPage(engine: Engine, getSettings: () => Settings): HTMLEle
         metrics: new Map(),
         evidence: null,
         linked: { kind, from, previous: previous.linked ? previous.linked.previous : previous },
+        newPmids: new Set(),
+        previousDate: null,
       };
       status.textContent = "";
       renderPapers();
@@ -408,8 +431,45 @@ export function searchPage(engine: Engine, getSettings: () => Settings): HTMLEle
         articleCard(a, r.entities?.get(a.pmid) ?? [], {
           metrics: r.metrics.get(a.pmid),
           onLinked: (art, kind) => void runLinked(art, kind),
+          starred: isSaved(a.pmid),
+          onStar: (art) => toggleSaved(art),
+          selected: selected.has(a.pmid),
+          onSelect: (art, on) => {
+            if (on) selected.add(art.pmid);
+            else selected.delete(art.pmid);
+            exportLabel.textContent = selectionLabel();
+          },
+          isNew: r.newPmids.has(a.pmid),
         }),
       ),
+    );
+
+    const selectionLabel = () =>
+      selected.size ? `${selected.size} selected: export or copy them` : `Export the ${visible.length} papers shown, or tick papers to choose`;
+    const exportLabel = h("span", { className: "muted small" }, selectionLabel());
+    const selectAll = h("input", {
+      type: "checkbox",
+      "aria-label": "Select all papers shown",
+      checked: visible.length > 0 && visible.every((a) => selected.has(a.pmid)),
+      onchange: (e: Event) => {
+        const on = (e.target as HTMLInputElement).checked;
+        for (const a of visible) {
+          if (on) selected.add(a.pmid);
+          else selected.delete(a.pmid);
+        }
+        renderPapers();
+      },
+    });
+    const exportBar = h(
+      "div",
+      { className: "export-bar" },
+      h("label", { className: "check" }, selectAll, "Select all"),
+      exportLabel,
+      exportMenu({
+        label: "Export",
+        filename: "pubmed-papers",
+        articles: () => (selected.size ? r.articles.filter((a) => selected.has(a.pmid)) : visible),
+      }),
     );
 
     papersCard.hidden = false;
@@ -498,6 +558,7 @@ export function searchPage(engine: Engine, getSettings: () => Settings): HTMLEle
             ),
           ),
         ),
+      exportBar,
       papersList,
     );
   }

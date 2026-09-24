@@ -435,3 +435,21 @@ svg.chart .col:focus { outline: none; }
 .together h3 { font-size: 0.92rem; }
 .together .bar-label .dot { margin-right: 6px; }
 @media (max-width: 760px) { .trends-grid { grid-template-columns: 1fr; } }
+
+/* Saving */
+.header-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.export-bar { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; margin: 4px 0 8px; padding: 6px 0; border-top: 1px solid var(--border); }
+.export-menu { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.history ol { margin: 8px 0; padding-left: 20px; display: grid; gap: 4px; }
+.history .link { text-align: left; }
+dialog.reading {
+  width: min(900px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  padding: 20px;
+}
+.saved { display: grid; gap: 6px; }
+.saved textarea { width: 100%; }

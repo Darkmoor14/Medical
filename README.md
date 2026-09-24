@@ -4,6 +4,33 @@ Search PubMed and see what the literature says. Each search downloads up to 200 
 
 **Live site:** https://darkmoor14.github.io/Medical/ (rebuilt on every push by `.github/workflows/pages.yml`).
 
+## Features
+
+**Searching**
+- **Filters:** date range, article type, free full text, humans, language, age group and sex. Active filters show as removable chips.
+- **Clinical question (PICO):** patient, intervention, comparison and outcome fields, plus PubMed Clinical Queries (therapy, diagnosis, etiology, prognosis, prediction).
+- **Romanian search terms:** rewritten in English with a clinical glossary ("insuficiență cardiacă și diabet" → "heart failure AND diabetes").
+- **Search aids:** MeSH heading suggestions while typing, "Did you mean…?" spelling corrections, and how PubMed read the search.
+- **Shareable links:** the whole search lives in the URL.
+
+**Results**
+- **Papers first:** they appear as soon as PubMed answers, and the on-device analysis follows.
+- **Strength of evidence:** a badge on each paper (meta-analysis → guideline → RCT → … → case report), with an evidence filter and a "strongest evidence first" order.
+- **Warnings** for retracted papers, expressions of concern and preprints.
+- **Citation counts** and Relative Citation Ratio from NIH iCite, with a "most cited" order.
+- **Similar articles** and **Cited by** open inside the app.
+
+**Analysis**
+- **Terms chart** (conditions, signs and symptoms, drugs, genes…). Synonyms are merged, so "CKD" and "chronic kidney disease" count as one. Click a term to filter the papers and see what it's mentioned with.
+- **Trends:** papers per year, or PubMed counts per year for all results, plus the top journals.
+- **Up to 1,000 papers** per search.
+- **Highlight legend** to switch categories on and off in abstracts.
+
+**Saving** (in this browser only)
+- **Reading list:** ☆ papers and add your own notes.
+- **Export** selected or shown papers as RIS (Zotero/EndNote/Mendeley), BibTeX or CSV, or copy Vancouver/APA references.
+- **Recent searches**, with papers that are new since the last run marked "New".
+
 ## How it works
 
 - **PubMed** is queried through the NCBI E-utilities (`esearch`, then `efetch` for abstracts). Only your search text, paging options and an optional API key are sent.
