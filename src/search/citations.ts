@@ -5,13 +5,26 @@ import type { Article } from "../pubmed";
 
 const stripPeriod = (s: string) => s.replace(/\.\s*$/, "");
 
-function authorsOf(a: Article) {
+export function authorsOf(a: Article) {
   return a.authorsFull.length
     ? a.authorsFull
     : a.authors.map((name) => {
         const [last, initials = ""] = name.split(" ");
         return { last, fore: "", initials, collective: "" };
       });
+}
+
+// Link to the paper: PubMed when it has a PMID, otherwise its DOI.
+export function paperUrl(a: Article): string {
+  return a.pmid ? `https://pubmed.ncbi.nlm.nih.gov/${a.pmid}/` : a.doi ? `https://doi.org/${a.doi}` : "";
+}
+
+// A stable BibTeX/LaTeX citation key: Author2023_PMID (or part of the DOI).
+export function bibKey(a: Article): string {
+  const first = authorsOf(a)[0];
+  const name = (first?.last || first?.collective || "ref").normalize("NFD").replace(/[^A-Za-z]/g, "") || "ref";
+  const id = a.pmid || (a.doi ? a.doi.replace(/[^A-Za-z0-9]/g, "").slice(-10) : String(a.title.length) + a.title.replace(/[^A-Za-z]/g, "").slice(0, 5));
+  return `${name}${a.year}_${id}`;
 }
 
 export function toRis(articles: Article[]): string {
@@ -35,8 +48,8 @@ export function toRis(articles: Article[]): string {
       if (a.doi) lines.push(`DO  - ${a.doi}`);
       if (a.abstract) lines.push(`AB  - ${a.abstract.replace(/\n/g, " ")}`);
       for (const kw of a.meshTerms) lines.push(`KW  - ${kw}`);
-      lines.push(`AN  - PMID:${a.pmid}`);
-      lines.push(`UR  - https://pubmed.ncbi.nlm.nih.gov/${a.pmid}/`);
+      if (a.pmid) lines.push(`AN  - PMID:${a.pmid}`);
+      if (paperUrl(a)) lines.push(`UR  - ${paperUrl(a)}`);
       lines.push("ER  - ");
       return lines.join("\r\n");
     })
@@ -50,8 +63,7 @@ function bibEscape(s: string): string {
 export function toBibtex(articles: Article[]): string {
   return articles
     .map((a) => {
-      const first = authorsOf(a)[0];
-      const key = `${(first?.last || first?.collective || "pmid").replace(/[^A-Za-z]/g, "")}${a.year}_${a.pmid}`;
+      const key = bibKey(a);
       const fields: [string, string][] = [
         [
           "author",
@@ -95,7 +107,7 @@ export function toCsv(articles: Article[]): string {
     a.pages,
     a.doi ?? "",
     a.pubTypes.join("; "),
-    `https://pubmed.ncbi.nlm.nih.gov/${a.pmid}/`,
+    paperUrl(a),
   ]);
   return [header, ...rows].map((r) => r.map(csvCell).join(",")).join("\n");
 }
@@ -108,7 +120,8 @@ export function vancouver(a: Article): string {
   const vol = a.volume ? `;${a.volume}${a.issue ? `(${a.issue})` : ""}` : "";
   const pages = a.pages ? `:${a.pages}` : "";
   const doi = a.doi ? ` doi:${a.doi}.` : "";
-  return `${authors} ${stripPeriod(a.title)}. ${a.journal}. ${a.year}${month}${vol}${pages}.${doi} PMID: ${a.pmid}.`.replace(/\s+/g, " ");
+  const pmid = a.pmid ? ` PMID: ${a.pmid}.` : "";
+  return `${authors} ${stripPeriod(a.title)}. ${a.journal}. ${a.year}${month}${vol}${pages}.${doi}${pmid}`.replace(/\s+/g, " ").trim();
 }
 
 // APA 7th edition style.
@@ -126,7 +139,7 @@ export function apa(a: Article): string {
           : `${authors.slice(0, 19).join(", ")}, … ${authors.at(-1)}`;
   const vol = a.volume ? `, ${a.volume}${a.issue ? `(${a.issue})` : ""}` : "";
   const pages = a.pages ? `, ${a.pages}` : "";
-  const doi = a.doi ? ` https://doi.org/${a.doi}` : ` https://pubmed.ncbi.nlm.nih.gov/${a.pmid}/`;
+  const doi = a.doi ? ` https://doi.org/${a.doi}` : a.pmid ? ` https://pubmed.ncbi.nlm.nih.gov/${a.pmid}/` : "";
   return `${list} (${a.year || "n.d."}). ${stripPeriod(a.title)}. ${a.journalTitle || a.journal}${vol}${pages}.${doi}`.trim();
 }
 

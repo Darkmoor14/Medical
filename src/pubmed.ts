@@ -26,6 +26,16 @@ export interface Article {
   // Integrity notices linked to this article.
   retracted: boolean;
   concern: boolean;
+  // Identifier from a non-PubMed source (e.g. an OpenAlex work id).
+  sourceId?: string;
+}
+
+// Identity of a paper across sources: PMID, else DOI, else the source's id.
+export function articleKey(a: Pick<Article, "pmid" | "doi" | "sourceId" | "title">): string {
+  if (a.pmid) return a.pmid;
+  if (a.doi) return `doi:${a.doi.toLowerCase()}`;
+  if (a.sourceId) return a.sourceId;
+  return `title:${a.title.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim().slice(0, 80)}`;
 }
 
 export interface SearchResult {

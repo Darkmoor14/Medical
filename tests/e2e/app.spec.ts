@@ -1,68 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
-import { EFETCH_XML } from "../fixtures";
-
-// Fake engine: tags a fixed vocabulary with regexes instead of running models.
-async function installFakeEngine(page: Page) {
-  await page.addInitScript(() => {
-    const vocab: [RegExp, string][] = [
-      [/chronic kidney disease|CKD/gi, "DISEASE"],
-      [/empagliflozin|metformin|SGLT2 inhibitors/gi, "CHEM"],
-    ];
-    const find = (text: string) => {
-      const out: { start: number; end: number; label: string; score: number }[] = [];
-      for (const [re, label] of vocab) {
-        for (const m of text.matchAll(re)) out.push({ start: m.index!, end: m.index! + m[0].length, label, score: 0.95 });
-      }
-      return out;
-    };
-    (window as unknown as Record<string, unknown>).__openmedTestEngine = {
-      configure: async () => null,
-      preload: async () => null,
-      // Tests can hold the analysis back to check that papers show first.
-      extractMany: async ({ docs }: { docs: { id: string; text: string }[] }) => {
-        const w = window as unknown as { __holdAnalysis?: Promise<void> };
-        if (w.__holdAnalysis) await w.__holdAnalysis;
-        return docs.map((d) => ({ id: d.id, spans: find(d.text) }));
-      },
-    };
-  });
-}
-
-async function mockPubMed(page: Page, opts: { spelling?: string } = {}) {
-  const requests: string[] = [];
-  await page.route("https://eutils.ncbi.nlm.nih.gov/**", async (route) => {
-    const req = route.request();
-    const body = req.postData() ?? "";
-    const params = new URLSearchParams(body);
-    const json = (data: unknown) =>
-      route.fulfill({ contentType: "application/json", headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify(data) });
-    const xml = (data: string) =>
-      route.fulfill({ contentType: "text/xml", headers: { "Access-Control-Allow-Origin": "*" }, body: data });
-    if (req.url().includes("espell")) {
-      return xml(`<eSpellResult><CorrectedQuery>${opts.spelling ?? ""}</CorrectedQuery></eSpellResult>`);
-    }
-    if (req.url().includes("elink")) {
-      return json({ linksets: [{ linksetdbs: [{ linkname: "pubmed_pubmed", links: ["111", "222"] }] }] });
-    }
-    if (params.get("db") === "mesh") {
-      if (req.url().includes("esearch")) return json({ esearchresult: { idlist: ["1", "2"] } });
-      return json({ result: { "1": { ds_meshterms: ["Heart Failure"] }, "2": { ds_meshterms: ["Heart Failure, Diastolic"] } } });
-    }
-    requests.push(body);
-    if (req.url().includes("esearch")) {
-      return json({ esearchresult: { count: "1234", idlist: ["111", "222"], querytranslation: "translated by pubmed" } });
-    }
-    return xml(EFETCH_XML);
-  });
-  await page.route("https://icite.od.nih.gov/**", (route) =>
-    route.fulfill({
-      contentType: "application/json",
-      headers: { "Access-Control-Allow-Origin": "*" },
-      body: JSON.stringify({ data: [{ pmid: 111, citation_count: 1200, relative_citation_ratio: 25.3 }, { pmid: 222, citation_count: 3 }] }),
-    }),
-  );
-  return requests;
-}
+import { expect, test } from "@playwright/test";
+import { installFakeEngine, mockPubMed } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await installFakeEngine(page);
@@ -71,7 +8,8 @@ test.beforeEach(async ({ page }) => {
 test("opens straight on the PubMed search", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: /Search PubMed/ })).toBeVisible();
-  await expect(page.getByRole("tab")).toHaveCount(0);
+  await expect(page.getByRole("tab")).toHaveText(["Search", "Matrix", "Write"]);
+  await expect(page.getByRole("tab", { name: "Search" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByText("Load synthetic example")).toHaveCount(0);
 });
 

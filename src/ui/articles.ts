@@ -1,5 +1,6 @@
 import { h } from "./dom";
 import { pubmedUrl, type Article, type LinkKind, type Metrics } from "../pubmed";
+import { paperUrl } from "../search/citations";
 import { evidenceLevel, isPreprint } from "../search/evidence";
 import type { Entity } from "../entities";
 
@@ -66,7 +67,11 @@ export function articleCard(a: Article, entities: Entity[] = [], opts: CardOptio
         "h3",
         {},
         opts.isNew && h("span", { className: "new-badge" }, "New"),
-        h("a", { href: pubmedUrl(a.pmid), target: "_blank", rel: "noopener noreferrer" }, ...highlight(a.title, titleEnts)),
+        h(
+          "a",
+          { href: a.pmid ? pubmedUrl(a.pmid) : paperUrl(a) || null, target: "_blank", rel: "noopener noreferrer" },
+          ...highlight(a.title, titleEnts),
+        ),
       ),
       opts.onStar &&
         h(
@@ -87,7 +92,7 @@ export function articleCard(a: Article, entities: Entity[] = [], opts: CardOptio
       { className: "meta" },
       [authors, a.journal, a.year].filter(Boolean).join(" · "),
       " · ",
-      h("span", { className: "pmid" }, `PMID ${a.pmid}`),
+      a.pmid ? h("span", { className: "pmid" }, `PMID ${a.pmid}`) : h("span", { className: "pmid" }, "Not in PubMed"),
       a.doi && [" · ", h("a", { href: `https://doi.org/${a.doi}`, target: "_blank", rel: "noopener noreferrer" }, "DOI")],
       a.pmcid && [
         " · ",

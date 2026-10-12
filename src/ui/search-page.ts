@@ -13,6 +13,7 @@ import {
   fetchArticles,
   linkedArticles,
   pubmedSearchUrl,
+  articleKey,
   searchPubMed,
   spellCheck,
   type Article,
@@ -431,7 +432,7 @@ export function searchPage(engine: Engine, getSettings: () => Settings): HTMLEle
         articleCard(a, r.entities?.get(a.pmid) ?? [], {
           metrics: r.metrics.get(a.pmid),
           onLinked: (art, kind) => void runLinked(art, kind),
-          starred: isSaved(a.pmid),
+          starred: isSaved(articleKey(a)),
           onStar: (art) => toggleSaved(art),
           selected: selected.has(a.pmid),
           onSelect: (art, on) => {

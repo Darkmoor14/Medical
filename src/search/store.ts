@@ -2,7 +2,7 @@
 // is wrapped: storage can be missing or blocked (private windows) and the
 // app must keep working without it.
 
-import type { Article } from "../pubmed";
+import { articleKey, type Article } from "../pubmed";
 import { encodeState, type SearchState } from "./url-state";
 import { EMPTY_FILTERS } from "./query";
 
@@ -46,13 +46,17 @@ export function readingList(): SavedPaper[] {
   return read<SavedPaper[]>(READING_KEY, []);
 }
 
-export function isSaved(pmid: string): boolean {
-  return readingList().some((p) => p.article.pmid === pmid);
+// Papers are identified by articleKey(): the PMID for PubMed papers, else the
+// DOI (or another source id), so papers found through OpenAlex or Crossref
+// can be saved too.
+export function isSaved(key: string): boolean {
+  return readingList().some((p) => articleKey(p.article) === key);
 }
 
 export function toggleSaved(article: Article): boolean {
   const list = readingList();
-  const i = list.findIndex((p) => p.article.pmid === article.pmid);
+  const key = articleKey(article);
+  const i = list.findIndex((p) => articleKey(p.article) === key);
   if (i >= 0) list.splice(i, 1);
   else list.unshift({ article, note: "", addedAt: new Date().toISOString() });
   write(READING_KEY, list);
@@ -60,17 +64,24 @@ export function toggleSaved(article: Article): boolean {
   return i < 0;
 }
 
-export function removeSaved(pmid: string) {
+// Save a paper if it isn't already; returns true when it was added.
+export function addSaved(article: Article): boolean {
+  if (isSaved(articleKey(article))) return false;
+  toggleSaved(article);
+  return true;
+}
+
+export function removeSaved(key: string) {
   write(
     READING_KEY,
-    readingList().filter((p) => p.article.pmid !== pmid),
+    readingList().filter((p) => articleKey(p.article) !== key),
   );
   notify();
 }
 
-export function setNote(pmid: string, note: string) {
+export function setNote(key: string, note: string) {
   const list = readingList();
-  const p = list.find((x) => x.article.pmid === pmid);
+  const p = list.find((x) => articleKey(x.article) === key);
   if (!p) return;
   p.note = note;
   write(READING_KEY, list);

@@ -31,6 +31,26 @@ Search PubMed and see what the literature says. Each search downloads up to 200 
 - **Export** selected or shown papers as RIS (Zotero/EndNote/Mendeley), BibTeX or CSV, or copy Vancouver/APA references.
 - **Recent searches**, with papers that are new since the last run marked "New".
 
+## Matrix and Write tabs
+
+The app has three tabs: **Search**, **Matrix** and **Write**. Everything you create there is saved in this browser only (`localStorage`); export to keep a copy.
+
+**Matrix** – a literature table built from your reading list.
+- One row per paper, one column per thing you extract (study design, population, sample size, outcome, key finding, limitations). Add, rename or remove columns.
+- Include / exclude / unsure decision per paper, sorting, filtering and counts.
+- "Suggest design and size" pre-fills cells from abstracts (guesses: check them).
+- Export as CSV, a landscape Word table, or copy for Excel.
+
+**Write** – a document editor with citations from your reading list.
+- Templates: blank, original article (IMRaD), case report (CARE), literature review.
+- "Cite…" inserts citations; the reference list builds itself in Vancouver (numbered in order of use) or APA (author–year) style.
+- "Cite…" can pull from the reading list, PubMed, OpenAlex, or a pasted DOI / PMID (Crossref for DOIs).
+- Export to Word (.docx), Markdown, LaTeX, PDF (print), and the references as BibTeX or RIS.
+
+OpenAlex, Crossref and iCite are called directly from the browser. They are covered by mocked tests; they have not been exercised against the live services from the build environment.
+
+The Write and Matrix code is original to this repository.
+
 ## How it works
 
 - **PubMed** is queried through the NCBI E-utilities (`esearch`, then `efetch` for abstracts). Only your search text, paging options and an optional API key are sent.

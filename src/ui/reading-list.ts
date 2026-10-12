@@ -4,6 +4,7 @@ import { h, replace } from "./dom";
 import { articleCard } from "./articles";
 import { exportMenu } from "./export-menu";
 import { readingList, removeSaved, setNote } from "../search/store";
+import { articleKey } from "../pubmed";
 
 export function readingListDialog(): HTMLDialogElement {
   const dialog = h("dialog", { className: "reading", "aria-labelledby": "reading-title" });
@@ -31,7 +32,7 @@ export function readingListDialog(): HTMLDialogElement {
                 articleCard(p.article, [], {
                   starred: true,
                   onStar: () => {
-                    removeSaved(p.article.pmid);
+                    removeSaved(articleKey(p.article));
                     render();
                   },
                 }),
@@ -43,7 +44,7 @@ export function readingListDialog(): HTMLDialogElement {
                     rows: 2,
                     value: p.note,
                     placeholder: "e.g. relevant for the discussion section",
-                    oninput: (e: Event) => setNote(p.article.pmid, (e.target as HTMLTextAreaElement).value),
+                    oninput: (e: Event) => setNote(articleKey(p.article), (e.target as HTMLTextAreaElement).value),
                   }),
                 ),
               ),
