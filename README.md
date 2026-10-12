@@ -33,7 +33,7 @@ Search PubMed and see what the literature says. Each search downloads up to 200 
 
 ## Matrix and Write tabs
 
-The app has three tabs: **Search**, **Matrix** and **Write**. Everything you create there is saved in this browser only (`localStorage`); export to keep a copy.
+The app has four tabs: **Search**, **Matrix**, **Write** and **Stats**. Everything you create there is saved in this browser only (`localStorage`); export to keep a copy.
 
 **Matrix** – a literature table built from your reading list.
 - One row per paper, one column per thing you extract (study design, population, sample size, outcome, key finding, limitations). Add, rename or remove columns.
@@ -46,6 +46,14 @@ The app has three tabs: **Search**, **Matrix** and **Write**. Everything you cre
 - "Cite…" inserts citations; the reference list builds itself in Vancouver (numbered in order of use) or APA (author–year) style.
 - "Cite…" can pull from the reading list, PubMed, OpenAlex, or a pasted DOI / PMID (Crossref for DOIs).
 - Export to Word (.docx), Markdown, LaTeX, PDF (print), and the references as BibTeX or RIS.
+
+**Stats** – four tools, all calculated in the browser.
+- **Calculators:** 2×2 table → risk ratio, odds ratio, risk difference, NNT/NNH, chi-square and Fisher tests; test accuracy → sensitivity, specificity, predictive values, likelihood ratios, with predictive values at your own prevalence and post-test probability. 95% confidence intervals throughout.
+- **My reading list:** papers by year, evidence level, study design, journal, first author and screening decision.
+- **My data:** paste a table or open a CSV/TSV file (never stored or sent): summary of every column, group comparison (Welch t, Mann–Whitney, ANOVA, Kruskal–Wallis, chi-square, Fisher), correlation (Pearson, Spearman) with a scatter plot.
+- **Meta-analysis:** enter each study's estimate and 95% CI (or add studies from the matrix) → fixed and random-effects (DerSimonian–Laird) pooling, Q, I², τ², forest plot, CSV.
+
+The statistics code is checked against published reference values in `tests/unit/stats.test.ts`; it is a convenience, not a validated statistical package.
 
 OpenAlex, Crossref and iCite are called directly from the browser. They are covered by mocked tests; they have not been exercised against the live services from the build environment.
 

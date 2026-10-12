@@ -36,7 +36,7 @@ const finder = referenceFinder();
 document.body.appendChild(finder.element);
 
 // --- Tabs --------------------------------------------------------------------
-type TabId = "search" | "matrix" | "write";
+type TabId = "search" | "matrix" | "write" | "stats";
 const TAB_KEY = "opm-tab";
 
 const panels: Record<TabId, HTMLElement> = {
@@ -44,13 +44,15 @@ const panels: Record<TabId, HTMLElement> = {
   matrix: h("div", { role: "tabpanel", id: "panel-matrix", "aria-labelledby": "tab-matrix", hidden: true }, matrixTab({ finder, apiKey })),
   // The editor is a separate chunk, loaded the first time the tab is opened.
   write: h("div", { role: "tabpanel", id: "panel-write", "aria-labelledby": "tab-write", hidden: true }),
+  stats: h("div", { role: "tabpanel", id: "panel-stats", "aria-labelledby": "tab-stats", hidden: true }),
 };
 $("#panel").append(...Object.values(panels));
 
-const LABELS: Record<TabId, string> = { search: "Search", matrix: "Matrix", write: "Write" };
+const LABELS: Record<TabId, string> = { search: "Search", matrix: "Matrix", write: "Write", stats: "Stats" };
 const tabList = $("#tabs");
 const tabButtons = new Map<TabId, HTMLButtonElement>();
 let writeLoaded = false;
+let statsLoaded = false;
 let current: TabId = "search";
 // The search lives in the address bar (so it can be shared). Set it aside while
 // another tab is open, so a reload there stays on that tab, and restore it on return.
@@ -83,6 +85,17 @@ async function show(id: TabId) {
     } catch (err) {
       writeLoaded = false;
       panels.write.replaceChildren(h("p", { className: "status error" }, `The editor could not be loaded: ${err instanceof Error ? err.message : String(err)}`));
+    }
+  }
+  if (id === "stats" && !statsLoaded) {
+    statsLoaded = true;
+    panels.stats.append(h("p", { className: "muted status", role: "status" }, "Loading…"));
+    try {
+      const { statsTab } = await import("./ui/stats-tab");
+      panels.stats.replaceChildren(statsTab());
+    } catch (err) {
+      statsLoaded = false;
+      panels.stats.replaceChildren(h("p", { className: "status error" }, `The statistics tools could not be loaded: ${err instanceof Error ? err.message : String(err)}`));
     }
   }
 }

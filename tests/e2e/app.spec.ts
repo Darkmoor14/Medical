@@ -8,7 +8,7 @@ test.beforeEach(async ({ page }) => {
 test("opens straight on the PubMed search", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: /Search PubMed/ })).toBeVisible();
-  await expect(page.getByRole("tab")).toHaveText(["Search", "Matrix", "Write"]);
+  await expect(page.getByRole("tab")).toHaveText(["Search", "Matrix", "Write", "Stats"]);
   await expect(page.getByRole("tab", { name: "Search" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByText("Load synthetic example")).toHaveCount(0);
 });
