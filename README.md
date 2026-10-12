@@ -27,6 +27,7 @@ Search PubMed and see what the literature says. Each search downloads up to 200 
 - **Highlight legend** to switch categories on and off in abstracts.
 
 **Saving** (in this browser only)
+- **Several reading lists:** keep a separate list per topic (switch in the header, create/rename/delete/copy/move in the Reading list window). Each list has its own papers, notes, matrix and meta-analysis. A single list saved by an earlier version becomes "My reading list".
 - **Reading list:** ☆ papers and add your own notes.
 - **Export** selected or shown papers as RIS (Zotero/EndNote/Mendeley), BibTeX or CSV, or copy Vancouver/APA references.
 - **Recent searches**, with papers that are new since the last run marked "New".
@@ -49,9 +50,9 @@ The app has four tabs: **Search**, **Matrix**, **Write** and **Stats**. Everythi
 
 **Stats** – four tools, all calculated in the browser.
 - **Calculators:** 2×2 table → risk ratio, odds ratio, risk difference, NNT/NNH, chi-square and Fisher tests; test accuracy → sensitivity, specificity, predictive values, likelihood ratios, with predictive values at your own prevalence and post-test probability. 95% confidence intervals throughout.
-- **My reading list:** papers by year, evidence level, study design, journal, first author and screening decision.
+- **My reading list:** automatically summarises the active list: papers by year, evidence level, study design, journal, first author, screening decision and median sample size.
 - **My data:** paste a table or open a CSV/TSV file (never stored or sent): summary of every column, group comparison (Welch t, Mann–Whitney, ANOVA, Kruskal–Wallis, chi-square, Fisher), correlation (Pearson, Spearman) with a scatter plot.
-- **Meta-analysis:** enter each study's estimate and 95% CI (or add studies from the matrix) → fixed and random-effects (DerSimonian–Laird) pooling, Q, I², τ², forest plot, CSV.
+- **Meta-analysis:** built automatically from the active reading list. Effect sizes (OR, RR, HR, mean difference…) with their 95% CI are read from the abstracts, shown beside the sentence they came from, and can be corrected or unticked; papers marked Include in the Matrix are used if any are marked. Hand-typed studies can be added. → fixed and random-effects (DerSimonian–Laird) pooling, Q, I², τ², forest plot, CSV.
 
 The statistics code is checked against published reference values in `tests/unit/stats.test.ts`; it is a convenience, not a validated statistical package.
 

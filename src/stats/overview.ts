@@ -5,7 +5,7 @@ import { articleKey, type Article } from "../pubmed";
 import { authorsOf } from "../search/citations";
 import { evidenceLevel, LEVELS } from "../search/evidence";
 import { journalCounts, yearCounts, type Count } from "../search/trends";
-import { DESIGN_COLUMN, suggestDesign, type MatrixData } from "../write/matrix";
+import { DESIGN_COLUMN, suggestDesign, suggestSampleSize, type MatrixData } from "../write/matrix";
 
 export interface Overview {
   total: number;
@@ -19,7 +19,19 @@ export interface Overview {
   retracted: number;
   withNotes: number;
   medianYear: number | null;
+  // Participants per study where the abstract states a number (a guess from the text).
+  sampleSizes: number[];
+  medianSample: number | null;
+  totalParticipants: number;
 }
+
+function participants(a: Article): number | null {
+  const text = sampleText(a);
+  if (!text || /studies|trials|articles|reports|cohorts/i.test(text)) return null;
+  const m = /(\d[\d,]*)/.exec(text);
+  return m ? Number(m[1].replace(/,/g, "")) : null;
+}
+const sampleText = (a: Article) => suggestSampleSize(a);
 
 const tally = (labels: string[], limit = 10): Count[] => {
   const m = new Map<string, number>();
@@ -36,6 +48,7 @@ export function overview(papers: Article[], matrix: MatrixData, notes: Record<st
     .map((d) => ({ label: d ? d[0].toUpperCase() + d.slice(1) : "Undecided", count: papers.filter((p) => (matrix.decisions[articleKey(p)] ?? "") === d).length }))
     .filter((c) => c.count);
   const years = papers.map((p) => Number(p.year)).filter((y) => y > 1800).sort((a, b) => a - b);
+  const sizes = papers.map(participants).filter((n): n is number => n !== null && n > 0).sort((a, b) => a - b);
   return {
     total: papers.length,
     years: yearCounts(papers),
@@ -48,5 +61,8 @@ export function overview(papers: Article[], matrix: MatrixData, notes: Record<st
     retracted: papers.filter((p) => p.retracted).length,
     withNotes: papers.filter((p) => notes[articleKey(p)]?.trim()).length,
     medianYear: years.length ? years[Math.floor(years.length / 2)] : null,
+    sampleSizes: sizes,
+    medianSample: sizes.length ? sizes[Math.floor(sizes.length / 2)] : null,
+    totalParticipants: sizes.reduce((s, n) => s + n, 0),
   };
 }

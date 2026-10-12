@@ -88,7 +88,8 @@ test("my data: semicolon file with decimal commas", async ({ page }) => {
 test("meta-analysis: pooled result, forest plot, heterogeneity, paste, reload", async ({ page }) => {
   await page.goto("/");
   await openStats(page, "Meta-analysis");
-  await expect(page.getByText("Enter at least two studies")).toBeVisible();
+  await expect(page.getByText("Needs at least two studies")).toBeVisible();
+  await page.getByRole("button", { name: "Add study by hand" }).click();
 
   const fill = async (i: number, v: [string, string, string, string]) => {
     await page.getByLabel(`Name of study ${i}`).fill(v[0]);
@@ -98,7 +99,7 @@ test("meta-analysis: pooled result, forest plot, heterogeneity, paste, reload", 
   };
   await fill(1, ["Smith 2019", "0.50", "0.40", "0.625"]);
   await fill(2, ["Jones 2020", "1.50", "1.20", "1.875"]);
-  await page.getByRole("button", { name: "Add study" }).click();
+  await page.getByRole("button", { name: "Add study by hand" }).click();
   await fill(3, ["Popa 2021", "1.00", "0.80", "1.25"]);
 
   const result = page.locator("section.card", { hasText: "Result" }).last();
@@ -116,7 +117,7 @@ test("meta-analysis: pooled result, forest plot, heterogeneity, paste, reload", 
   await expect(page.getByLabel("Name of study 4")).toHaveValue("Ionescu 2022");
 
   // An unusable row is reported and left out.
-  await page.getByRole("button", { name: "Add study" }).click();
+  await page.getByRole("button", { name: "Add study by hand" }).click();
   await fill(5, ["Broken", "5", "6", "7"]);
   await expect(result.getByText(/Left out.*Broken/)).toBeVisible();
 
@@ -149,13 +150,76 @@ test("reading list overview and meta rows from the matrix", async ({ page }) => 
   await page.getByLabel(/^Decision for/).first().selectOption("include");
 
   await openStats(page, "My reading list");
-  await expect(page.locator(".stat-tile", { hasText: "papers" })).toContainText("2");
+  await expect(page.locator(".stat-tile").first()).toContainText("2");
   await expect(page.getByText("Strength of evidence")).toBeVisible();
   await expect(page.getByText("Screening decisions")).toBeVisible();
 
-  await page.getByRole("button", { name: "Meta-analysis", exact: true }).click();
-  await page.getByRole("button", { name: "Add studies from my matrix" }).click();
-  await expect(page.getByText(/Added 1 study marked Include/)).toBeVisible();
-  await expect(page.getByLabel("Name of study 1")).not.toHaveValue("");
   await page.screenshot({ path: "test-results/stats.png", fullPage: true });
+});
+
+function seedList(page: Page) {
+  const paper = (pmid: string, author: string, year: string, abstract: string) => ({
+    article: {
+      pmid, title: `${author} trial of therapy ${pmid}`, abstract, authors: [`${author} A`], journal: "J Test", year,
+      pubTypes: ["Randomized Controlled Trial"], doi: null, pmcid: null, journalTitle: "J Test", volume: "", issue: "", pages: "", month: "",
+      authorsFull: [{ last: author, fore: "A", initials: "A", collective: "" }], meshTerms: [], retracted: false, concern: false,
+    },
+    note: "",
+    addedAt: "2026-01-01T00:00:00Z",
+  });
+  return page.addInitScript((papers) => {
+    if (localStorage.getItem("opm-reading-lists-v2")) return;
+    localStorage.setItem("opm-reading-lists-v2", JSON.stringify({ active: "default", lists: [{ id: "default", name: "My reading list", papers }] }));
+  }, [
+    paper("901", "Smith", "2019", "We randomised 400 patients. Mortality fell (HR 0.72, 95% CI 0.61-0.85)."),
+    paper("902", "Jones", "2020", "In 1,200 patients, events were more common (HR 1.30; 95% CI 1.05 to 1.61)."),
+    paper("903", "Lee", "2021", "A trial of 90 patients with no effect size reported."),
+  ]);
+}
+
+test("meta-analysis builds itself from the reading list, with corrections", async ({ page }) => {
+  await seedList(page);
+  await page.goto("/");
+  await openStats(page, "Meta-analysis");
+
+  await expect(page.getByText(/Effect sizes were read from 2 of 3 abstracts/)).toBeVisible();
+  await expect(page.getByLabel("Name of study 1")).toHaveValue(/Lee|Smith|Jones/);
+  const ids: Record<string, string> = { Smith: "901", Jones: "902", Lee: "903" };
+  const row = (name: string) => page.locator(`#panel-stats tr[data-key="${ids[name]}"]`);
+  await expect(row("Smith").getByLabel(/Estimate of study/)).toHaveValue("0.72");
+  await expect(row("Smith").getByLabel(/Lower limit/)).toHaveValue("0.61");
+  await expect(row("Smith")).toContainText("Mortality fell");
+  await expect(row("Jones").getByLabel(/Upper limit/)).toHaveValue("1.61");
+  await expect(row("Lee")).toContainText("No effect size");
+
+  // Pooled result appears without typing anything; the header names the measure found.
+  const result = page.locator("section.card", { hasText: "Result" }).last();
+  await expect(result.getByRole("columnheader", { name: "Hazard ratio" })).toBeVisible();
+  await expect(result.locator("svg.forest rect.box")).toHaveCount(2);
+
+  // Correct the third paper by hand, then reset it.
+  await row("Lee").getByLabel(/Estimate of study/).fill("0.9");
+  await row("Lee").getByLabel(/Lower limit/).fill("0.7");
+  await row("Lee").getByLabel(/Upper limit/).fill("1.2");
+  await expect(result.locator("svg.forest rect.box")).toHaveCount(3);
+
+  // Leave one out.
+  await page.getByLabel(/^Use study \d+ \(Jones/).uncheck();
+  await expect(result.locator("svg.forest rect.box")).toHaveCount(2);
+
+  // Corrections and the unticked row survive a reload.
+  await page.reload();
+  await openStats(page, "Meta-analysis");
+  await expect(row("Lee").getByLabel(/Estimate of study/)).toHaveValue("0.9");
+  await expect(page.getByLabel(/^Use study \d+ \(Jones/)).not.toBeChecked();
+  await row("Lee").getByRole("button", { name: /Reset study/ }).click();
+  await expect(row("Lee").getByLabel(/Estimate of study/)).toHaveValue("");
+
+  // Turning it off leaves only hand-typed rows.
+  await page.getByLabel("Take studies from my reading list automatically").uncheck();
+  await expect(page.locator("#panel-stats tr[data-key=\"901\"]")).toHaveCount(0);
+
+  // The overview tab reads the sample sizes from the same abstracts.
+  await page.getByRole("button", { name: "My reading list", exact: true }).click();
+  await expect(page.locator(".stat-tile", { hasText: "median sample size" })).toContainText("400");
 });

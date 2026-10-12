@@ -5,6 +5,7 @@
 import { articleKey, type Article } from "../pubmed";
 import { authorPart } from "./cite";
 import { evidenceLevel } from "../search/evidence";
+import { listKey } from "../search/store";
 
 export type Decision = "" | "include" | "exclude" | "unsure";
 
@@ -43,9 +44,10 @@ export function emptyMatrix(): MatrixData {
 
 const KEY = "opm-matrix-v1";
 
-export function loadMatrix(): MatrixData {
+// One matrix per reading list (the active list unless another is named).
+export function loadMatrix(listId?: string): MatrixData {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(listKey(KEY, listId));
     const m = raw ? JSON.parse(raw) : null;
     if (m && Array.isArray(m.columns)) return { columns: m.columns, cells: m.cells ?? {}, decisions: m.decisions ?? {} };
   } catch {
@@ -54,9 +56,9 @@ export function loadMatrix(): MatrixData {
   return emptyMatrix();
 }
 
-export function saveMatrix(m: MatrixData): boolean {
+export function saveMatrix(m: MatrixData, listId?: string): boolean {
   try {
-    localStorage.setItem(KEY, JSON.stringify(m));
+    localStorage.setItem(listKey(KEY, listId), JSON.stringify(m));
     return true;
   } catch {
     return false;

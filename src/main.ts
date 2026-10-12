@@ -7,7 +7,7 @@ import { matrixTab } from "./ui/matrix-tab";
 import { referenceFinder } from "./ui/finder";
 import { settingsDialog } from "./ui/settings-dialog";
 import { readingListDialog } from "./ui/reading-list";
-import { onReadingListChange, readingList } from "./search/store";
+import { createList, onReadingListChange, readingList, readingLists, activeListId, setActiveList } from "./search/store";
 
 let settings = loadSettings();
 const getSettings = () => settings;
@@ -28,8 +28,35 @@ const updateReadingCount = () => {
   const n = readingList().length;
   readingBtn.textContent = n ? `★ Reading list (${n})` : "☆ Reading list";
 };
-updateReadingCount();
-onReadingListChange(updateReadingCount);
+// Which reading list papers are saved to, and shown in the Matrix and Stats tabs.
+const NEW_LIST = "__new";
+const listSelect = h("select", {
+  id: "list-select",
+  "aria-label": "Active reading list",
+  title: "Which reading list you are working with",
+  onchange: (e: Event) => {
+    const sel = e.target as HTMLSelectElement;
+    if (sel.value === NEW_LIST) {
+      const name = window.prompt("Name of the new list (for example: Heart failure, Thesis chapter 2)");
+      if (name?.trim()) createList(name);
+      else renderListSelect();
+    } else setActiveList(sel.value);
+  },
+});
+const renderListSelect = () => {
+  const active = activeListId();
+  listSelect.replaceChildren(
+    ...readingLists().map((l) => h("option", { value: l.id, selected: l.id === active }, `${l.name} (${l.count})`)),
+    h("option", { value: NEW_LIST }, "＋ New list…"),
+  );
+};
+readingBtn.before(listSelect);
+const refreshHeader = () => {
+  updateReadingCount();
+  renderListSelect();
+};
+refreshHeader();
+onReadingListChange(refreshHeader);
 readingBtn.addEventListener("click", () => reading.showModal());
 
 const finder = referenceFinder();

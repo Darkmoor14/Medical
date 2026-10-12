@@ -197,12 +197,12 @@ test("reading list with notes survives a reload", async ({ page }) => {
   await page.locator(".paper").first().getByRole("button", { name: "Add to reading list" }).click();
   await expect(page.locator("#reading-btn")).toHaveText("★ Reading list (1)");
   await page.locator("#reading-btn").click();
-  const dialog = page.getByRole("dialog", { name: /Reading list/ });
+  const dialog = page.getByRole("dialog", { name: /reading list/i });
   await expect(dialog).toContainText("Empagliflozin in chronic kidney disease");
   await dialog.getByPlaceholder("e.g. relevant for the discussion section").fill("key trial");
   await page.reload();
   await page.locator("#reading-btn").click();
-  await expect(page.getByRole("dialog", { name: /Reading list/ }).locator("textarea")).toHaveValue("key trial");
+  await expect(page.getByRole("dialog", { name: /reading list/i }).locator("textarea")).toHaveValue("key trial");
 });
 
 test("exports selected papers and copies references", async ({ page, context }) => {

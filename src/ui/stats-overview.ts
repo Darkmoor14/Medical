@@ -5,7 +5,7 @@ import { articleKey } from "../pubmed";
 import { barList, columnChart } from "./charts";
 import { downloadText } from "./download";
 import { note } from "./stats-ui";
-import { onReadingListChange, readingList } from "../search/store";
+import { activeList, onReadingListChange, readingList } from "../search/store";
 import { loadMatrix } from "../write/matrix";
 import { overview, type Overview } from "../stats/overview";
 
@@ -26,7 +26,7 @@ export function readingListOverview(): HTMLElement & { refresh: () => void } {
     }
     const o = overview(
       list.map((p) => p.article),
-      loadMatrix(),
+      loadMatrix(activeList().id),
       Object.fromEntries(list.map((p) => [articleKey(p.article), p.note])),
     );
     replace(
@@ -34,13 +34,14 @@ export function readingListOverview(): HTMLElement & { refresh: () => void } {
       h(
         "section",
         { className: "card" },
-        h("div", { className: "card-head" }, h("h2", {}, "Reading list at a glance"), h("button", { type: "button", className: "small-btn", onclick: () => downloadText("reading-list-summary.csv", overviewCsv(o), "text/csv;charset=utf-8") }, "Download CSV")),
+        h("div", { className: "card-head" }, h("h2", {}, `${activeList().name}: at a glance`), h("button", { type: "button", className: "small-btn", onclick: () => downloadText("reading-list-summary.csv", overviewCsv(o), "text/csv;charset=utf-8") }, "Download CSV")),
         h(
           "div",
           { className: "stat-tiles" },
           tile(o.total, "papers"),
           tile(o.medianYear ?? "–", "median year"),
           tile(`${o.withAbstract}/${o.total}`, "with an abstract"),
+          tile(o.medianSample != null ? o.medianSample.toLocaleString() : "–", `median sample size (${o.sampleSizes.length} papers state one)`),
           tile(o.withNotes, "with your notes"),
           tile(o.retracted, "retracted"),
         ),

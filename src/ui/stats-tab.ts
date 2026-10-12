@@ -18,11 +18,12 @@ const KEY = "opm-stats-section";
 
 export function statsTab(): HTMLElement {
   const overview = readingListOverview();
+  const meta = metaSection();
   const bodies: Record<SectionId, HTMLElement> = {
     calc: calculators(),
     list: overview,
     data: ownData(),
-    meta: metaSection(),
+    meta,
   };
   const buttons = new Map<SectionId, HTMLButtonElement>();
   const body = h("div", { className: "stats-body" }, ...Object.values(bodies));
@@ -31,6 +32,7 @@ export function statsTab(): HTMLElement {
     for (const [k, el] of Object.entries(bodies)) el.hidden = k !== id;
     for (const [k, b] of buttons) b.setAttribute("aria-pressed", String(k === id));
     if (id === "list") overview.refresh();
+    if (id === "meta") meta.refresh();
     try {
       localStorage.setItem(KEY, id);
     } catch {

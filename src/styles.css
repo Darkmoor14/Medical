@@ -603,3 +603,5 @@ svg.chart .dot { fill: var(--accent); opacity: 0.6; }
 svg.chart .fitline { stroke: currentColor; stroke-width: 1.5; stroke-dasharray: 5 3; }
 svg.chart text.strong { font-weight: 600; }
 .stats-tab .stat-out > button, .stats-tab .stat-out > .small-btn { justify-self: start; }
+.header-actions select { max-width: 220px; }
+.small-select { font-size: 0.82rem; padding: 3px 6px; }

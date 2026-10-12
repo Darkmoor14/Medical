@@ -7,7 +7,7 @@ import type { Finder } from "./finder";
 import { articleKey, pubmedUrl, type Article } from "../pubmed";
 import { paperUrl } from "../search/citations";
 import { evidenceLevel } from "../search/evidence";
-import { onReadingListChange, readingList, removeSaved } from "../search/store";
+import { activeList, onReadingListChange, readingList, removeSaved } from "../search/store";
 import {
   applySuggestions,
   DECISION_LABEL,
@@ -26,12 +26,14 @@ import {
 } from "../write/matrix";
 
 export function matrixTab(deps: { finder: Finder; apiKey: () => string | null }): HTMLElement {
-  const data = loadMatrix();
+  // Each reading list has its own matrix; reload when the active list changes.
+  let listId = activeList().id;
+  let data = loadMatrix(listId);
   let sort: SortBy = "added";
   let filter: DecisionFilter = "all";
 
   const persist = () => {
-    const ok = saveMatrix(data);
+    const ok = saveMatrix(data, listId);
     status.textContent = ok ? "" : "Could not save: the browser's storage is full. Export your matrix now.";
   };
   const status = h("p", { className: "status", role: "status" });
@@ -40,7 +42,14 @@ export function matrixTab(deps: { finder: Finder; apiKey: () => string | null })
 
   const papers = (): Article[] => readingList().map((p) => p.article);
 
+  const title = h("h2", {}, "Literature matrix");
   function render() {
+    const active = activeList();
+    if (active.id !== listId) {
+      listId = active.id;
+      data = loadMatrix(listId);
+    }
+    title.textContent = `Literature matrix: ${active.name}`;
     const all = papers();
     const rows = matrixRows(all, data, sort, filter);
     const counts = decisionCounts(all, data);
@@ -237,7 +246,7 @@ export function matrixTab(deps: { finder: Finder; apiKey: () => string | null })
     h(
       "section",
       { className: "card" },
-      h("div", { className: "card-head" }, h("h2", {}, "Literature matrix")),
+      h("div", { className: "card-head" }, title),
       h(
         "p",
         { className: "muted small" },
